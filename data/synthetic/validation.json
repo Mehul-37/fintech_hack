@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "customers": 2000,
+  "transactions": 71876,
+  "repayments": 6000,
+  "checks": [
+    "unique primary keys",
+    "foreign keys",
+    "integer-paise reconciliation",
+    "no negative cash",
+    "repayment transaction reconciliation",
+    "no payments before due",
+    "event timing",
+    "IST timestamps",
+    "chronological ledger order",
+    "profile/device references",
+    "installment-specific payment matching",
+    "source hashes match manifest"
+  ]
+}

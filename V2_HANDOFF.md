@@ -1,83 +1,39 @@
-# V2 handoff — replace scoring, retain the investigation experience
+# V2 implementation handoff — 4 October 2026 (IST)
 
-V1 is complete. No Python backend, generator at scale, model artifacts or training pipeline is implemented. The contracts below describe the actual source, followed by the required V2 work.
+The generator, two trained models, customer-disjoint evaluation, saved artifacts and browser inference are complete. See `ML_RESULTS.md` for the explanation, `ml/README.md` for rerun commands, and `ML_VERIFICATION.md` for historical checks; see `MODEL_REVIEW.md` for current V2.1 results. The original V1 prototype and its historical verification remain reference material.
 
-## Existing contracts and replacement points
+## Completed contracts
 
-`src/types.ts` defines:
+- `generator/generate.py`: seeded eight-table financial simulation, 2,000 customers, 43,630 completed history transactions, 26,446 completed follow-up transactions and 1,800 pending instructions. Source hashes and independent validation are saved.
+- `ml/features.py`: strictly as-of numerical inputs; transaction fraud target and mature loan/snapshot seven-day unpaid-balance target. Final repayment summaries, fraud truth and scenario tags are excluded from features.
+- `ml/train.py`: 1,400/300/300 customer groups, logistic baselines, two HistGradientBoosting candidates per target, validation-only selection/calibration/thresholds, test metrics, exception-cohort errors, warning lead time and portable forest export.
+- `src/ml-inference.ts`: numerical browser evaluation of the exported forests and observed feature extraction. Python parity is tested. Both models run without a service; invalid input fails explicitly.
+- `src/scoring.ts`: the shared binding now uses `trainedScoreProvider`; the old `simulatedScoreProvider` remains an explicit reference, not a fallback. Charts compute historical scores through the same binding. Scam display is an observed transaction episode peak; repayment estimates seven-day delinquency.
+- `src/context.ts`: separate rule layer considers observed outflows, cash shock, later liquidity pressure, competing income/prior distress and fan-in/pass-through. Familiar-device scams are allowed. Due-date cash shortfall is distinguished from seven-day delinquency. Moderate estimates and competing explanations route to manual review. No causal inference is claimed.
+- `src/config.ts`: validation alert thresholds are fraud 27.5 and repayment 27.5. Narrative confidence 75, cash shock .5, repayment rise 20, transfer multiple 5 and network .85 / 20 minutes / three distinct senders are transparent prototype rules, not learned bank policy.
+- Investigation reports use trained score provenance for new captures. Existing reports keep their saved source/time/version until explicitly regenerated. Local persistence retains its current storage key and shape.
 
-- **Customer:** ID/name, salary and recurring expense budget, opening cash/credit, credit limit, usual transfer size, loan principal/EMI/due date/expected salary, prior repayment history, transactions, customer events and authored score points. `story` is a demo-picker label only; do not pass it into model features.
-- **Transaction:** ID, ISO timestamp with explicit offset, amount/direction/channel, counterparty/account, Completed/Pending status, salary/essential/transfer/credit/EMI category, observed signals and simulated transaction risk. Optional novelty/device flags and `knownAt` for an already-known future pending instruction.
-- **CustomerEvent:** stable ID, observation time, kind, title/detail and linked transaction IDs. Device sessions are currently synthetic event evidence, not a standalone session table; V2 should add typed Session records.
-- **FinancialState:** ledger cash, credit used/utilization, suspected outgoing amount, known essential commitments before EMI, EMI funds/shortfall, days past due and installment status. Cash includes completed transactions only. Credit draws also raise liability. Known commitments exclude future settled outcomes.
-- **RiskSnapshot:** customerId/asOf, separate scamScore/repaymentScore, `source`, providerVersion, evidence IDs, observed signals, optional episode {peak, observedAt, windowStart, status}, and latestTransactionScore. No probability or model attribution is implied in V1.
-- **Assessment:** context, evidence strength, cautious explanation, alternative explanation, available event references.
-- **Intervention:** action kind/title/detail/priority. Review recommendations are separate from approval or execution.
-- **CaseRecord:** action/customer identifiers, owner/status/priority, creation time, captured evidence timestamp/IDs/explanation, follow-up, contact outcome, disposition, checklist, notes and append-only timestamped activity.
+The live demo has five authored comparison fixtures and 107 generated customers (19 from seed 20261004, plus 88 from seed 20261006), evaluated using the trained models. They are selected by single-loan/date compatibility, without filtering scores or outcomes. The generated 2,000 customers are training/evaluation records, not imported dashboard rows. Multiple-loan training is supported; the current presentation contract still displays one loan per fixture. Supplied profile values, prior history and loan schedules are assumptions, not inferred truth. Arjun is outside all generated training/evaluation groups.
 
-Current provider contract:
+## Canonical target
 
-```ts
-interface ScoreProvider {
-  score(customer: Customer, asOf: string): RiskSnapshot;
-}
-```
+At snapshot T, choose the next installment with T < dueAt <= T + 30 days. `overdue_7d = 1` iff its allocated completed payments leave an unpaid paise balance at the end of its seventh calendar day after due date in IST. Partial payment counts as positive. Full payment by the cutoff is negative. Exclude incomplete follow-up or no qualifying installment. This is early delinquency, not permanent default or a low/medium/high training class.
 
-`src/scoring.ts` exports `simulatedScoreProvider` and the **single replaceable `scoreProvider` binding** consumed by the UI and context rules. It selects a score point only when that observation timestamp is available, then returns provenance and visible evidence. Context and intervention engines do not read `story`.
+Financial forecasts subtract only already-known pending essentials before due. Future settled consumption is not input evidence. A credit draw raises both cash and liability. Salary dates are expectations, not guaranteed future receipts. Generated pending instructions may remain unexecuted; they are not assured settlement.
 
-For V2 inference, introduce an explicitly as-of feature input rather than sending a raw Customer object containing future fixtures or authored targets. Keep the UI’s RiskSnapshot shape. A local synchronous model adapter can implement the existing interface. For the planned FastAPI service, add a small async score hook/cache keyed by `(customerId, asOf, providerVersion)`, with loading/error handling and stale-response rejection; change the provider method to return `Promise<RiskSnapshot>`. Charts should request historical as-of scores through that same adapter. These plumbing changes should not redesign the four views.
+## Current demonstrated outcome
 
-Recommended input shape:
+Arjun retains the ₹78,000 outflow and ₹12,000 due-date shortfall. His trained episode peak is 88.8; the seven-day estimate is 4.6 on 24 September. Expected salary 1 October precedes the 4 October cutoff. These measured fixture results replace the historical 91/68 sequence; the score is not forced to fit a presentation narrative.
 
-```ts
-type InferenceInput = {
-  customerId: string;
-  asOf: string;
-  observedTransactions: Transaction[]; // at <= asOf only
-  observedEvents: CustomerEvent[];    // at <= asOf only
-  financialState: FinancialState;
-  knownLoanSchedule: Customer['loan']; // schedule, not outcome labels
-  featureSchemaVersion: string;
-};
-```
+The two models outperform logistic baselines on synthetic PR-AUC. Calibration is selected using customer-grouped cross-validation within validation: fraud uses Platt mapping and repayment keeps the identity mapping. See the measured results. Exception cohorts have standalone model errors in `evaluation.json`, while context validation currently covers targeted controls. A population-level contextual false-link/causal study and robust chronological generalization remain unverified.
 
-Do not include scenario labels, authored ScorePoints, future event details, future default flags, future balances or later contact outcomes. V1 transaction risks are authored too; V2 must replace these with transaction inference, not reuse them as truth or feed the scam index mechanically into repayment prediction.
+## Deferred production work
 
-## Rules retained from V1
+FastAPI and SQLite are unnecessary for the current direct browser inference and are deferred. Before real deployment, add typed sessions, full multi-loan UI support, rolling/closable episode identities, empirical profile baselines, a richer settlement/cancellation lifecycle, real linked labelled data, purged chronological experiments, institutional threshold/cost selection and operator authentication.
 
-- `src/selectors.ts`: as-of ledger selection, liability arithmetic and known pending commitments.
-- `src/config.ts`: scam alert 70; repayment warning 60; transfer-size multiple 5; shock fraction .5; post-shock repayment rise 20; at least three distinct senders; .85 pass-through within 20 minutes. These are prototype parameters, not validated bank policy.
-- `src/context.ts`: evaluate fan-in and rapid onward flow separately from loss; require suspicious outgoing evidence, a cash shock, later liquidity pressure and post-shock repayment deterioration for linked distress. Income gaps and pre-existing repayment warnings provide competing explanations and route to manual review.
-- `src/interventions.ts`: victim investigation/recovery review plus manual support review; mule investigation without victim inference; income/cash-flow assessment for organic distress; verification for uncertain records; no intervention for healthy records.
+If moving case persistence server-side, preserve captured evidence and timestamps, add transactional UUID/episode-aware idempotency, migrate `meridian.cases.v1` explicitly and retain original saved report provenance. Browser-local audit entries are not a secure institutional trail. No migration, public deployment, messages, holds, debt changes or recovery execution was performed here.
 
-Improve competing-explanation handling and episode boundaries on a broader dataset. The current rules are transparent, fixture-tested heuristics. They do not prove causation, role or legitimacy.
+SHAP/feature contributions were not implemented. Input features and observed explanations are available, but narrative evidence must never be labelled a model attribution. Any dependency upgrade must rerun numerical export parity because the exporter reads pinned scikit-learn tree internals.
 
-## Data / model work still required
 
-1. Seed a coherent ledger generator, initially around 1,000 customers over 180 days, with at least 90 historical days and complete outcome follow-up. Include salary gaps, essential commitments, credit draws, repayments, recoveries and multiple episode windows.
-2. Train two models using LightGBM or XGBoost, with reproducible seeds and versioned feature schemas. Fraud target is transaction-level suspected scam involvement; account role remains contextual. Repayment target is the next EMI due within 30 days remaining unpaid seven days after due date. Exclude snapshots with incomplete follow-up or no qualifying EMI.
-3. Split by customer and time; purge overlapping outcome windows. Fit preprocessing/calibration only on training/validation. Keep Arjun’s hero customer outside training.
-4. Add negative controls: scam loss with adequate buffer/recovery; distress preceding unrelated fraud; legitimate large payment; missing/conflicting evidence; repeated payments from a single sender; multiple episodes.
-5. Report measured precision/recall, PR-AUC, false alerts per 1,000, repayment calibration, warning lead time and contextual false links. Label evaluation synthetic. No real-world banking effectiveness claims.
-6. Compute actual model explanations with feature names, scale/units and model version. Keep SHAP contributions separate from context narratives. Never fabricate SHAP or express log-odds contributions as percentage points.
-7. Add FastAPI + SQLite, artifact save/load, input validation, failure states and reproducible inference. Demonstrate a changed observed event changing an inference result. Re-run complete flows after restart.
-
-## Persistence migration
-
-V1 key: `meridian.cases.v1`, containing a JSON array of CaseRecord. Source: `src/persistence.ts`.
-
-Migrate local cases once with a schema-versioned importer and deduplicate on `(customerId, action kind, episode ID)` rather than V1’s `(customerId, kind)` lifetime uniqueness. Replace sequence IDs with UUIDs/database IDs and use transactional case creation. Retain captured evidence time, evidence IDs, notes and original audit timestamps. Save follow-up as a date, audit times in UTC, and render them in IST.
-
-Use separate tables for customers, transactions, sessions, loans, installments/repayments, financial snapshots, risk snapshots, episodes, cases, notes and audit entries. Enforce foreign keys, immutable audit entries and idempotency server-side. Browser-local status is not authorization or an institutional audit trail. Add authenticated operator identity and permissions only when moving beyond the local hackathon demonstration.
-
-Contact outcomes currently record an analyst-entered synthetic result; they do not confirm a real contact attempt or independently verify a beneficiary. Model scores and contractual loan terms must remain unaffected by an unapproved support request.
-
-## Tests and UI preservation
-
-`npm test` covers ledger reconciliation across all 24 customers / 24 days, the ₹78,000 six-minute loss, credit liabilities, EMI-before-salary coverage, as-of evidence/scoring, stable canonical replay, open-episode versus fresh transaction scores, five outcome routes, conflicting evidence, distinct-sender checks, provider independence from scenario labels and persistence/duplicate prevention.
-
-`VERIFICATION.md` documents real-browser exercises at 1440 × 900 and 1920 × 1080, case edits followed by refresh, transaction evidence, graph edges/nodes, filters and smaller-window behavior. Preserve these journeys and add automated browser regressions when the backend arrives. Add provider timeout/version/stale response tests and database concurrency/migration tests.
-
-UI source is grouped into data, selectors, scoring, context, interventions, persistence and four section views. The `src/engine.ts` file is a compatibility re-export, not the implementation layer. Replace the scorer through the binding and async hook, keeping the simulation badge until the whole displayed history actually comes from fresh model outputs. Mixed-mode views must label each source accurately.
-
-Bank execution, collections changes, message delivery, real-person model validity and production compliance are outside this V2 hackathon milestone too.
+Portfolio expansion: the recording portfolio now contains 112 synthetic customer records. The original 24 IDs and histories are retained; 88 new records come from a separately validated source at `data/presentation-extension/`, seed 20261006, with distinct EXT IDs. New records use the same frozen trained models. Queue pagination displays 20 records per page; search/filtering covers the whole portfolio. No real customer data was imported and no model retraining was needed.

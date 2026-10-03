@@ -122,6 +122,13 @@ button:hover {
   padding: 30px 16px 0;
   z-index: 10;
 }
+.sidebar[hidden] {
+  display: none;
+}
+.app-shell.sidebar-closed > .main-shell {
+  margin-left: 0;
+  width: 100%;
+}
 .brand {
   display: flex;
   align-items: center;
@@ -198,6 +205,7 @@ button:hover {
   letter-spacing: 1.3px;
   color: #788577;
   padding: 0 14px;
+  margin-top: 32px;
   margin-bottom: 10px;
   font-weight: 600;
 }
@@ -357,6 +365,7 @@ button:hover {
   min-width: 0;
 }
 .topbar {
+  position: relative;
   height: 66px;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -364,6 +373,43 @@ button:hover {
   padding: 0 32px;
   gap: 18px;
   background: #fdfefb;
+}
+.topbar > .sidebar-toggle,
+.topbar > .guide-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+.guide-toggle {
+  margin-left: auto;
+}
+@media (min-width: 761px) {
+  .topbar > .sidebar-toggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 11;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 2px 5px rgb(36 59 49 / 6%);
+  }
+  .topbar > .sidebar-toggle:hover {
+    background: #edf3ee;
+  }
+  .sidebar-closed .topbar > .sidebar-toggle {
+    left: 16px;
+    transform: translateY(-50%);
+  }
+  .sidebar-closed .breadcrumbs {
+    margin-left: 32px;
+  }
 }
 .breadcrumbs {
   display: flex;
@@ -606,6 +652,216 @@ main {
 }
 .scatter-legend .mule {
   background: #8b7299;
+}
+
+/* Investigation reporter: scoped additions to the existing case detail. */
+.investigation-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.report-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 18px;
+  background: #f7f8f2;
+}
+.report-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin: 7px 0;
+}
+.report-heading p,
+.report-caption,
+.report-footer {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.report-body {
+  padding: 18px;
+}
+.report-body h4 {
+  font-size: 14px;
+  margin: 22px 0 10px;
+}
+.report-body p,
+.report-body li,
+.report-baseline,
+.report-source-detail p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.report-body p {
+  margin: 8px 0;
+}
+.report-notice,
+.report-review {
+  background: #f0f5ed;
+  color: var(--green);
+  border-radius: 5px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.report-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 16px 0;
+  font-size: 12px;
+}
+.report-claim {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.report-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.report-citations summary {
+  cursor: pointer;
+  color: var(--green);
+  font-size: 12px;
+}
+.report-citations[open] .report-sources {
+  margin-top: 8px;
+}
+.report-sources button {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--green);
+  text-align: left;
+  overflow-wrap: anywhere;
+  background: #f7f8f2;
+}
+.report-sources button:hover,
+.report-prompts button:hover {
+  background: #edf3e6;
+}
+.report-factor {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.report-factor .badge {
+  flex-shrink: 0;
+}
+.report-baseline {
+  margin: 0;
+}
+.report-baseline > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+}
+.report-baseline dd {
+  margin: 0;
+  font-weight: 500;
+}
+.report-section {
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 14px;
+}
+.report-section summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.report-timeline {
+  padding-left: 22px;
+}
+.report-timeline li {
+  margin: 12px 0;
+}
+.report-timeline span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.report-timeline button {
+  text-align: left;
+  color: var(--green);
+  text-decoration: underline;
+}
+.report-ask {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+}
+.report-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+.report-prompts button {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-align: left;
+}
+.report-ask form label {
+  display: block;
+  font-size: 12px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.report-ask form > div {
+  display: flex;
+  gap: 8px;
+}
+.report-ask input {
+  min-width: 0;
+  flex: 1;
+  width: 100%;
+  font-size: 13px;
+}
+.report-footer {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 14px;
+  overflow-wrap: anywhere;
+}
+.report-footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+.report-source-detail {
+  margin-top: 20px;
+  overflow-wrap: anywhere;
+}
+.investigation-panel > .form-error {
+  margin: 12px 18px;
+}
+@media (max-width: 600px) {
+  .report-heading,
+  .report-body {
+    padding: 14px;
+  }
+  .report-factor {
+    flex-direction: column;
+    gap: 0;
+  }
+  .report-ask form > div {
+    flex-direction: column;
+  }
 }
 .scatter-legend .uncertain {
   background: #8097aa;
@@ -2488,9 +2744,6 @@ button:not(:disabled):active {
     font-size: 8px;
     padding: 5px;
   }
-  .topbar > .icon-button {
-    display: none;
-  }
   main {
     padding: 20px 16px 0;
   }
@@ -3665,3 +3918,9 @@ button:not(:disabled):active {
 
 
 
+.legend-line.amber { color: #9b761e; border-top-style: dotted; }
+.more-evidence { margin: 12px 0; }
+.more-evidence summary { cursor: pointer; color: var(--ink); font-size: 12px; }
+.more-evidence .evidence-chain { margin-top: 10px; max-height: 310px; overflow-y: auto; }
+.queue-pagination { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 20px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+.queue-pagination > div { display: flex; align-items: center; gap: 12px; }

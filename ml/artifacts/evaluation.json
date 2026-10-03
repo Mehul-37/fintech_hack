@@ -1,0 +1,491 @@
+{
+  "source": "synthetic",
+  "seed": 42,
+  "python": "3.12.14",
+  "sklearn": "1.7.2",
+  "provider_version": "histgb-synthetic-v2.1",
+  "dataset_hashes": {
+    "behavioral_profiles.csv": "7dc193fb9f681f4dc7f9306b65f43d6574c9bf9ea310e15f402e3f6ccd3af893",
+    "customer_events.csv": "6ce55cfd74c2f4e04e5111a5717a3a990e6b53f69d68ac1e9917a3f347ec521e",
+    "customers.csv": "781f2632189c77e0947cf880373a1196630f89d7a467faafd1a684c07b1240af",
+    "devices.csv": "954129b6f4cf2f46cac277db097f6080933a3a0cbd43b63316bc2460095ddb57",
+    "loans.csv": "7abce6ab98b94b81c007e6bf13047aea51e12455cff2d80eb49621a4a2917951",
+    "merchants.csv": "fe22570f5b1ff85b24bf662ee9a8a4cb2467cc2bc5f6ad96d877f968979cdfc2",
+    "repayments.csv": "c1f212adbb9de438e772333b026c4e2ddcc2dd792d2f988e832dfc5d02a1fcd5",
+    "transactions.csv": "d88a7b29a77c32579e6ad14f95d7b628202b5ad21930fae3f4af3a5bf1378b17"
+  },
+  "history_cutoff": "2026-09-29T23:59:59.999000+05:30",
+  "followup_cutoff": "2026-11-05T23:59:59.999000+05:30",
+  "split_customers": {
+    "train": 1400,
+    "validation": 300,
+    "test": 300
+  },
+  "evaluation": "customer-disjoint synthetic holdout; temporal generalization unverified",
+  "repayment_target": "Next EMI due within 30 days retains a positive balance at end of seventh calendar day after due date (IST)",
+  "models": {
+    "fraud": {
+      "algorithm": "HistGradientBoostingClassifier",
+      "features": [
+        "amount_ratio",
+        "new_beneficiary",
+        "new_device",
+        "unusual_hour",
+        "velocity_1h",
+        "velocity_24h",
+        "cash_fraction",
+        "incoming_senders_20m",
+        "pass_through",
+        "outgoing"
+      ],
+      "calibration_selection": {
+        "method": "platt",
+        "raw_validation_log_loss": 0.06265113141287418,
+        "customer_crossfit_platt_log_loss": 0.06235195964690413
+      },
+      "fitted_parameters": {
+        "categorical_features": "from_dtype",
+        "class_weight": null,
+        "early_stopping": false,
+        "interaction_cst": null,
+        "l2_regularization": 2,
+        "learning_rate": 0.08,
+        "loss": "log_loss",
+        "max_bins": 255,
+        "max_depth": null,
+        "max_features": 1.0,
+        "max_iter": 100,
+        "max_leaf_nodes": 7,
+        "min_samples_leaf": 25,
+        "monotonic_cst": null,
+        "n_iter_no_change": 10,
+        "random_state": 42,
+        "scoring": "loss",
+        "tol": 1e-07,
+        "validation_fraction": 0.1,
+        "verbose": 0,
+        "warm_start": false
+      },
+      "split_rows": {
+        "train": 16386,
+        "validation": 3490,
+        "test": 3527
+      },
+      "split_positives": {
+        "train": 712,
+        "validation": 117,
+        "test": 171
+      },
+      "validation": {
+        "rows": 3490,
+        "positives": 117,
+        "pr_auc": 0.6999187943231119,
+        "roc_auc": 0.9649592921161257,
+        "brier": 0.0166762192804129,
+        "log_loss": 0.06131223800085348,
+        "precision": 0.5833333333333334,
+        "recall": 0.7777777777777778,
+        "false_alerts_per_1000": 18.624641833810887,
+        "threshold": 0.275
+      },
+      "test": {
+        "rows": 3527,
+        "positives": 171,
+        "pr_auc": 0.8025995230497419,
+        "roc_auc": 0.9853844733008524,
+        "brier": 0.020035775240629373,
+        "log_loss": 0.06661324173805601,
+        "precision": 0.6534653465346535,
+        "recall": 0.7719298245614035,
+        "false_alerts_per_1000": 19.84689537850865,
+        "threshold": 0.275
+      },
+      "uncalibrated_test_brier": 0.01932473223872547,
+      "logistic_baseline_test": {
+        "rows": 3527,
+        "positives": 171,
+        "pr_auc": 0.6423730667524683,
+        "roc_auc": 0.9769688922345593,
+        "brier": 0.025620110949348865,
+        "log_loss": 0.08297845545570984,
+        "precision": 0.717948717948718,
+        "recall": 0.49122807017543857,
+        "false_alerts_per_1000": 9.356393535582649,
+        "threshold": 0.5
+      },
+      "exception_cohorts": {
+        "ambiguous": {
+          "rows": 99,
+          "positives": 0,
+          "alerts": 3,
+          "false_alerts": 3,
+          "missed": 0
+        },
+        "buffered_scam": {
+          "rows": 27,
+          "positives": 4,
+          "alerts": 0,
+          "false_alerts": 0,
+          "missed": 4
+        },
+        "conflicting": {
+          "rows": 36,
+          "positives": 6,
+          "alerts": 4,
+          "false_alerts": 0,
+          "missed": 2
+        },
+        "familiar_device_scam": {
+          "rows": 47,
+          "positives": 8,
+          "alerts": 3,
+          "false_alerts": 0,
+          "missed": 5
+        },
+        "healthy": {
+          "rows": 1726,
+          "positives": 1,
+          "alerts": 19,
+          "false_alerts": 18,
+          "missed": 0
+        },
+        "legitimate_large": {
+          "rows": 27,
+          "positives": 0,
+          "alerts": 0,
+          "false_alerts": 0,
+          "missed": 0
+        },
+        "mild_distress": {
+          "rows": 228,
+          "positives": 0,
+          "alerts": 3,
+          "false_alerts": 3,
+          "missed": 0
+        },
+        "mule": {
+          "rows": 157,
+          "positives": 40,
+          "alerts": 37,
+          "false_alerts": 2,
+          "missed": 5
+        },
+        "multiple_episodes": {
+          "rows": 120,
+          "positives": 26,
+          "alerts": 23,
+          "false_alerts": 0,
+          "missed": 3
+        },
+        "new_device_legitimate": {
+          "rows": 79,
+          "positives": 0,
+          "alerts": 4,
+          "false_alerts": 4,
+          "missed": 0
+        },
+        "organic_distress": {
+          "rows": 242,
+          "positives": 0,
+          "alerts": 3,
+          "false_alerts": 3,
+          "missed": 0
+        },
+        "pooled_payments": {
+          "rows": 47,
+          "positives": 0,
+          "alerts": 12,
+          "false_alerts": 12,
+          "missed": 0
+        },
+        "prior_distress_unrelated_scam": {
+          "rows": 38,
+          "positives": 6,
+          "alerts": 4,
+          "false_alerts": 0,
+          "missed": 2
+        },
+        "recovered_scam": {
+          "rows": 114,
+          "positives": 17,
+          "alerts": 17,
+          "false_alerts": 0,
+          "missed": 0
+        },
+        "same_sender": {
+          "rows": 120,
+          "positives": 0,
+          "alerts": 21,
+          "false_alerts": 21,
+          "missed": 0
+        },
+        "scam_shock": {
+          "rows": 352,
+          "positives": 53,
+          "alerts": 45,
+          "false_alerts": 2,
+          "missed": 10
+        },
+        "small_scam": {
+          "rows": 68,
+          "positives": 10,
+          "alerts": 4,
+          "false_alerts": 2,
+          "missed": 8
+        }
+      },
+      "test_score_distribution": {
+        "percentiles": {
+          "0": 0.061543354808758256,
+          "10": 0.1255929664921065,
+          "25": 0.1499881191713789,
+          "50": 0.1974321565306119,
+          "75": 0.31453786415709967,
+          "90": 5.046986237629629,
+          "95": 30.125284937999957,
+          "99": 77.33171899843211,
+          "100": 92.7306722632768
+        },
+        "below_one_percent": 0.8202438332860789,
+        "above_99_percent": 0.0,
+        "between_10_and_90_percent": 0.08420754182024383
+      }
+    },
+    "repayment": {
+      "algorithm": "HistGradientBoostingClassifier",
+      "features": [
+        "cash_coverage",
+        "funds_coverage",
+        "commitment_coverage",
+        "salary_coverage",
+        "expense_ratio",
+        "credit_utilization",
+        "days_to_due",
+        "salary_after_due_days",
+        "past_late_fraction",
+        "past_missed_count",
+        "income_gap",
+        "credit_draw_coverage"
+      ],
+      "calibration_selection": {
+        "method": "identity",
+        "raw_validation_log_loss": 0.3097050141018773,
+        "customer_crossfit_platt_log_loss": 0.32024333019221
+      },
+      "fitted_parameters": {
+        "categorical_features": "from_dtype",
+        "class_weight": null,
+        "early_stopping": false,
+        "interaction_cst": null,
+        "l2_regularization": 2,
+        "learning_rate": 0.08,
+        "loss": "log_loss",
+        "max_bins": 255,
+        "max_depth": null,
+        "max_features": 1.0,
+        "max_iter": 100,
+        "max_leaf_nodes": 15,
+        "min_samples_leaf": 25,
+        "monotonic_cst": null,
+        "n_iter_no_change": 10,
+        "random_state": 42,
+        "scoring": "loss",
+        "tol": 1e-07,
+        "validation_fraction": 0.1,
+        "verbose": 0,
+        "warm_start": false
+      },
+      "split_rows": {
+        "train": 5588,
+        "validation": 1184,
+        "test": 1228
+      },
+      "split_positives": {
+        "train": 1596,
+        "validation": 383,
+        "test": 280
+      },
+      "validation": {
+        "rows": 1184,
+        "positives": 383,
+        "pr_auc": 0.8897358168380384,
+        "roc_auc": 0.9221958191946751,
+        "brier": 0.09426945563162543,
+        "log_loss": 0.3097050141018773,
+        "precision": 0.7418604651162791,
+        "recall": 0.8328981723237598,
+        "false_alerts_per_1000": 93.75,
+        "threshold": 0.275
+      },
+      "test": {
+        "rows": 1228,
+        "positives": 280,
+        "pr_auc": 0.8017779763702569,
+        "roc_auc": 0.8897679324894515,
+        "brier": 0.09220639785352727,
+        "log_loss": 0.31190293085970644,
+        "precision": 0.5967302452316077,
+        "recall": 0.7821428571428571,
+        "false_alerts_per_1000": 120.52117263843648,
+        "threshold": 0.275
+      },
+      "uncalibrated_test_brier": 0.09220639785352727,
+      "logistic_baseline_test": {
+        "rows": 1228,
+        "positives": 280,
+        "pr_auc": 0.7298465605498113,
+        "roc_auc": 0.8643685955394816,
+        "brier": 0.11217359187923939,
+        "log_loss": 0.36941154140888655,
+        "precision": 0.7587939698492462,
+        "recall": 0.5392857142857143,
+        "false_alerts_per_1000": 39.08794788273615,
+        "threshold": 0.5
+      },
+      "exception_cohorts": {
+        "ambiguous": {
+          "rows": 28,
+          "positives": 4,
+          "alerts": 3,
+          "false_alerts": 1,
+          "missed": 2
+        },
+        "buffered_scam": {
+          "rows": 4,
+          "positives": 0,
+          "alerts": 0,
+          "false_alerts": 0,
+          "missed": 0
+        },
+        "conflicting": {
+          "rows": 12,
+          "positives": 12,
+          "alerts": 12,
+          "false_alerts": 0,
+          "missed": 0
+        },
+        "familiar_device_scam": {
+          "rows": 12,
+          "positives": 4,
+          "alerts": 7,
+          "false_alerts": 3,
+          "missed": 0
+        },
+        "healthy": {
+          "rows": 628,
+          "positives": 80,
+          "alerts": 144,
+          "false_alerts": 74,
+          "missed": 10
+        },
+        "legitimate_large": {
+          "rows": 8,
+          "positives": 4,
+          "alerts": 4,
+          "false_alerts": 0,
+          "missed": 0
+        },
+        "mild_distress": {
+          "rows": 84,
+          "positives": 44,
+          "alerts": 28,
+          "false_alerts": 8,
+          "missed": 24
+        },
+        "mule": {
+          "rows": 36,
+          "positives": 8,
+          "alerts": 10,
+          "false_alerts": 5,
+          "missed": 3
+        },
+        "multiple_episodes": {
+          "rows": 40,
+          "positives": 19,
+          "alerts": 21,
+          "false_alerts": 7,
+          "missed": 5
+        },
+        "new_device_legitimate": {
+          "rows": 36,
+          "positives": 6,
+          "alerts": 12,
+          "false_alerts": 6,
+          "missed": 0
+        },
+        "organic_distress": {
+          "rows": 100,
+          "positives": 52,
+          "alerts": 55,
+          "false_alerts": 14,
+          "missed": 11
+        },
+        "pooled_payments": {
+          "rows": 12,
+          "positives": 0,
+          "alerts": 0,
+          "false_alerts": 0,
+          "missed": 0
+        },
+        "prior_distress_unrelated_scam": {
+          "rows": 8,
+          "positives": 4,
+          "alerts": 6,
+          "false_alerts": 2,
+          "missed": 0
+        },
+        "recovered_scam": {
+          "rows": 36,
+          "positives": 10,
+          "alerts": 18,
+          "false_alerts": 9,
+          "missed": 1
+        },
+        "same_sender": {
+          "rows": 40,
+          "positives": 2,
+          "alerts": 4,
+          "false_alerts": 2,
+          "missed": 0
+        },
+        "scam_shock": {
+          "rows": 124,
+          "positives": 31,
+          "alerts": 39,
+          "false_alerts": 13,
+          "missed": 5
+        },
+        "small_scam": {
+          "rows": 20,
+          "positives": 0,
+          "alerts": 4,
+          "false_alerts": 4,
+          "missed": 0
+        }
+      },
+      "test_score_distribution": {
+        "percentiles": {
+          "0": 0.7932895693868385,
+          "10": 1.9755509059237026,
+          "25": 3.914423338314644,
+          "50": 10.4167070453957,
+          "75": 35.48063147399299,
+          "90": 83.90854022882095,
+          "95": 96.69845466818991,
+          "99": 98.50594578400877,
+          "100": 99.25094585810561
+        },
+        "below_one_percent": 0.007328990228013029,
+        "above_99_percent": 0.0016286644951140066,
+        "between_10_and_90_percent": 0.4372964169381108
+      },
+      "warning_lead_time": {
+        "overdue_installments_with_snapshots": 150,
+        "warned_installments": 127,
+        "median_days_before_due": 21.0,
+        "scope": "Four September snapshots; synthetic held-out customers; no continuous-monitoring claim"
+      }
+    }
+  },
+  "elapsed_seconds": 8.38
+}

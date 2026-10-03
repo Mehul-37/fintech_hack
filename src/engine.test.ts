@@ -10,8 +10,16 @@ import {
   highlightedEvents,
 } from './engine';
 import { createCase, loadCases, saveCases, updateCase } from './persistence';
+import { transactionModelScore } from './ml-inference';
 const arjun = customers[0];
 describe('ledger and as-of invariants', () => {
+  it('highlights the observed payment behind a generated customer episode peak', () => {
+    const c = customers.find((c) => c.name === 'Riya Malhotra')!;
+    const asOf = endOfDay(24);
+    const peak = visibleTransactions(c, asOf).filter((t) => t.category === 'transfer' && t.status === 'Completed')
+      .sort((a, b) => transactionModelScore(c, b) - transactionModelScore(c, a))[0];
+    expect(highlightedEvents(c, asOf).some((e) => e.transactionIds?.includes(peak.id))).toBe(true);
+  });
   it('keeps highlighted evidence unique, chronological and strictly as-of at every replay step', () => {
     for (const c of customers)
       for (let day = 1; day <= 24; day++) {
@@ -27,9 +35,8 @@ describe('ledger and as-of invariants', () => {
     for (const c of customers)
       for (let day = 1; day <= 24; day++) {
         const ts = visibleTransactions(c, endOfDay(day)).filter((t) => t.status === 'Completed');
-        const expected =
-          c.openingCash +
-          ts.reduce((sum, t) => sum + (t.direction === 'in' ? t.amount : -t.amount), 0);
+        const expected = (Math.round(c.openingCash * 100) + ts.reduce((sum, t) =>
+          sum + Math.round(t.amount * 100) * (t.direction === 'in' ? 1 : -1), 0)) / 100;
         expect(financialState(c, endOfDay(day)).cash).toBe(expected);
         expect(expected).toBeGreaterThanOrEqual(0);
       }
@@ -116,7 +123,7 @@ describe('score provider and context routing', () => {
   it('routes pre-existing distress and competing income gaps to manual review', () => {
     const priorDistress = {
       ...arjun,
-      scorePoints: arjun.scorePoints.map((p) => (p.day === 12 ? { ...p, repayment: 65 } : p)),
+      loan: { ...arjun.loan, history: [{ month: 'Aug 2026', status: 'Missed' as const, daysLate: 32 }] },
     };
     expect(assessContext(priorDistress, endOfDay(24)).context).toBe('Uncertain / manual review');
     const incomeGap = {

@@ -13,7 +13,6 @@ import {
   Pause,
   RotateCcw,
   Search,
-  CircleHelp,
   Check,
   Plus,
   SlidersHorizontal,
@@ -21,9 +20,12 @@ import {
   Clock3,
   Wallet,
   Info,
+  CircleHelp,
   ExternalLink,
   X,
   Trash2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import {
   ReactFlow,
@@ -49,6 +51,10 @@ import {
   highlightedEvents,
 } from './engine';
 import { createCase, loadCases, saveCases, updateCase } from './persistence';
+import { InvestigationPanel } from './InvestigationPanel';
+import { buildInvestigation } from './investigation';
+import { modelVersion, transactionModelScore, expectedSalaryAt, repaymentHistoryAt } from './ml-inference';
+import { riskLabel } from './format';
 import type {
   CaseRecord,
   CaseStatus,
@@ -109,6 +115,7 @@ function BrandIcon({ className = '', style }: { className?: string; style?: Reac
 }
 
 export default function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [section, setSection] = useState<Section>('overview');
   const [customerId, setCustomerId] = useState(customers[0].id);
   const [day, setDay] = useState(24);
@@ -226,12 +233,18 @@ export default function App() {
   };
 
   const c = customers.find((c) => c.id === customerId) ?? customers[0];
+  const replayStops = useMemo(() => c.dataSource === 'generated-holdout'
+    ? [1, 6, 12, 17, 20, 24].map((d) => ({ id: `${c.id}-REVIEW-${d}`, at: endOfDay(d),
+        kind: 'baseline' as const, title: 'Scheduled history review', detail: 'Review the observations available at this checkpoint.' }))
+    : c.events.filter((e) => dayOf(e.at) <= 24), [c]);
   const asOf = endOfDay(day);
   const f = financialState(c, asOf);
   const risk = scoreProvider.score(c, asOf);
   const assessment = assessContext(c, asOf, risk);
   const actions = interventions(c, asOf, assessment);
   const events = visibleEvents(c, asOf);
+  const highlighted = highlightedEvents(c, asOf);
+  const remainingEvidence = events.filter((e) => !highlighted.some((h) => h.id === e.id));
   useEffect(() => {
     try {
       loadCases(localStorage);
@@ -241,14 +254,14 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!playing) return;
-    const next = c.events.find((e) => dayOf(e.at) > day);
+    const next = replayStops.find((e) => dayOf(e.at) > day);
     if (!next) {
       setPlaying(false);
       return;
     }
     const timer = setTimeout(() => setDay(dayOf(next.at)), 1900);
     return () => clearTimeout(timer);
-  }, [playing, day, c]);
+  }, [playing, day, replayStops]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(''), 4500);
@@ -285,6 +298,20 @@ export default function App() {
   }
   function makeCase(a: Intervention) {
     const result = createCase(cases, c, asOf, a, assessment);
+    if (result.created) {
+      try {
+        result.record.investigation = buildInvestigation(result.record, c, customers);
+        result.record.activity.push({
+          at: result.record.investigation.generatedAt,
+          text: `Local deterministic investigation report generated; reporter ${result.record.investigation.reporter}; score provider ${result.record.investigation.evidence.risk.providerVersion}; retrieval ${result.record.investigation.retrievalMs}ms, generation ${result.record.investigation.generationMs}ms. Human review required.`,
+        });
+      } catch {
+        result.record.activity.push({
+          at: new Date().toISOString(),
+          text: 'Investigation report generation failed. The case is available for manual review; retry from the case detail.',
+        });
+      }
+    }
     if (persist(result.cases)) {
       setToast(
         result.created
@@ -345,8 +372,8 @@ export default function App() {
           </div>
         </div>
       )}
-      <div className={`app-shell ${introMounted && (introStage === 'blank' || introStage === 'letter') ? 'intro-active' : ''}`}>
-        <aside className="sidebar">
+      <div className={`app-shell${sidebarOpen ? '' : ' sidebar-closed'} ${introMounted && (introStage === 'blank' || introStage === 'letter') ? 'intro-active' : ''}`}>
+        <aside id="workspace-sidebar" className="sidebar" hidden={!sidebarOpen}>
           <a
             className="brand"
             href="#"
@@ -373,10 +400,6 @@ export default function App() {
               meridian<span className="brand-sub">RISK WORKSPACE</span>
             </span>
           </a>
-          <div className="workspace-label">
-            <span className="live-dot" />
-            Demo institution <span className="tiny">V1</span>
-          </div>
           <div className="nav-label">WORKSPACE</div>
           <nav aria-label="Main navigation">
             {nav.map((n) => (
@@ -394,47 +417,15 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div
-          className="sidebar-story"
-          onMouseMove={(e) => {
-            const el = e.currentTarget;
-            const rect = el.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const y = (e.clientY - rect.top) / rect.height;
-            const normX = (x - 0.5) * 2;
-            const normY = (y - 0.5) * 2;
-            const maxDeg = 4.5;
-            const rotX = -normY * maxDeg;
-            const rotY = normX * maxDeg;
-            el.style.transform = `perspective(600px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
-            el.style.boxShadow = `${-normX * 5}px ${-normY * 5 + 6}px 18px rgba(0, 0, 0, 0.07)`;
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget;
-            el.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
-            el.style.boxShadow = '';
-          }}
-        >
-          <div className="eyebrow">THE CONNECTED VIEW</div>
-          <h3>
-            One customer.
-            <br />
-            Two kinds of risk.
-          </h3>
-          <p>Follow the event, understand the impact, choose the response.</p>
-          <button onClick={() => openCustomer(customers[0], true)}>
-            Replay Arjun’s story <ArrowUpRight size={16} />
-          </button>
-        </div>
         <div className="sidebar-bottom">
           <button className="nav-item prototype-guide-btn" onClick={() => openGuide()}>
             <CircleHelp size={18} />
             Prototype guide
           </button>
           <div className="analyst">
-            <span className="avatar">AS</span>
+            <span className="avatar">M</span>
             <div>
-              <b>Ananya Sen</b>
+              <b>Mehul</b>
               <span>Risk analyst · Local workspace</span>
             </div>
           </div>
@@ -442,16 +433,26 @@ export default function App() {
       </aside>
       <div className="main-shell">
         <header className="topbar">
+          <button
+            className="icon-button sidebar-toggle"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            aria-expanded={sidebarOpen}
+            aria-controls="workspace-sidebar"
+            onClick={() => setSidebarOpen((open) => !open)}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose size={18} aria-hidden="true" />
+            ) : (
+              <PanelLeftOpen size={18} aria-hidden="true" />
+            )}
+          </button>
           <div className="breadcrumbs">
             Workspace <ChevronRight size={14} />
             <b>{nav.find((n) => n.id === section)?.label}</b>
           </div>
-          <span className="simulation-badge">
-            <span />
-            Synthetic scenario • Simulated risk scores
-          </span>
           <button
-            className="topbar-guide-btn prototype-guide-btn"
+            className="topbar-guide-btn prototype-guide-btn guide-toggle"
             aria-label="Open prototype guide"
             title="Prototype guide"
             onClick={() => openGuide()}
@@ -486,7 +487,9 @@ export default function App() {
                   <h1>
                     Customer 360<span className="heading-dot">.</span>
                   </h1>
-                  <p>The financial story behind the risk.</p>
+                  <p>{c.dataSource === 'generated-holdout'
+                    ? 'Synthetic August–September history · trained model estimates.'
+                    : 'Synthetic comparison scenario · trained model estimates.'}</p>
                 </div>
                 <label className="select-label">
                   Demo customer
@@ -529,20 +532,20 @@ export default function App() {
                     <Score
                       label="Scam Risk"
                       value={risk.scamScore}
-                      baseline={c.scorePoints[0].scam}
+                      baseline={scoreProvider.score(c, endOfDay(1)).scamScore}
                       color="coral"
                       caption={
                         risk.episode
                           ? `Open episode peak · observed ${dateLabel(risk.episode.observedAt)}`
-                          : 'Authored snapshot · observed signals only'
+                          : 'Trained model · observed payments only'
                       }
                     />
                     <Score
                       label="Repayment Risk"
                       value={risk.repaymentScore}
-                      baseline={c.scorePoints[0].repayment}
+                      baseline={scoreProvider.score(c, endOfDay(1)).repaymentScore}
                       color="teal"
-                      caption={`Upcoming EMI · ${dateLabel(c.loan.dueAt)} · not a probability`}
+                      caption={`Seven-day delinquency estimate · synthetic-trained`}
                     />
                     <Card className="liquidity-score">
                       <div className="eyebrow">
@@ -568,7 +571,7 @@ export default function App() {
                     <div className="card-heading">
                       <div>
                         <span className="eyebrow">SHARED CUSTOMER TIMELINE</span>
-                        <h2>See risk evolve in context</h2>
+                        <h2>Risk over time</h2>
                       </div>
                       <span className="badge neutral">
                         <Clock3 size={13} />
@@ -584,11 +587,12 @@ export default function App() {
                         <i className="legend-line teal dashed" />
                         Repayment Risk
                       </span>
-                      <span className="legend-note">Simulated indices · 0–100</span>
+                      <span><i className="legend-line amber" />Cash gap · % of EMI</span>
+                      <span className="legend-note">Gap is ledger-derived</span>
                     </div>
                     <RiskChart customer={c} day={day} />
                     <div className="event-track">
-                      {c.events.map((e) => {
+                      {replayStops.map((e) => {
                         const observed = dayOf(e.at) <= day;
                         return (
                           <button
@@ -615,7 +619,9 @@ export default function App() {
                             <b>Day {dayOf(e.at)}</b>
                             <small>
                               {observed
-                                ? e.title.includes('EMI')
+                                ? c.dataSource === 'generated-holdout'
+                                  ? 'History review'
+                                  : e.title.includes('EMI')
                                   ? 'EMI before salary'
                                   : e.kind === 'transfer'
                                     ? 'Transfer activity'
@@ -642,8 +648,8 @@ export default function App() {
                         onClick={() => {
                           setPlaying(false);
                           setDay(
-                            [...c.events].reverse().find((e) => dayOf(e.at) < day)
-                              ? dayOf([...c.events].reverse().find((e) => dayOf(e.at) < day)!.at)
+                            [...replayStops].reverse().find((e) => dayOf(e.at) < day)
+                              ? dayOf([...replayStops].reverse().find((e) => dayOf(e.at) < day)!.at)
                               : 1,
                           );
                         }}
@@ -671,7 +677,7 @@ export default function App() {
                         onClick={() => {
                           setPlaying(false);
                           setDay(
-                            dayOf(c.events.find((e) => dayOf(e.at) > day)?.at ?? endOfDay(24)),
+                            dayOf(replayStops.find((e) => dayOf(e.at) > day)?.at ?? endOfDay(24)),
                           );
                         }}
                         title="Next event"
@@ -757,14 +763,14 @@ export default function App() {
                       </div>
                       <div className="loan-detail">
                         <span>Next expected salary</span>
-                        <b>{dateLabel(c.loan.salaryAt)}</b>
+                        <b>{dateLabel(expectedSalaryAt(c, asOf))}</b>
                       </div>
                       <div className="loan-detail">
                         <span>Days past due</span>
                         <b>{f.daysPastDue}</b>
                       </div>
                       <div className="repayment-history">
-                        {c.loan.history.map((h) => (
+                        {repaymentHistoryAt(c, asOf).map((h) => (
                           <span key={h.month}>
                             <Check size={12} />
                             {h.month.split(' ')[0]} · {h.status}
@@ -812,7 +818,7 @@ export default function App() {
                       <span className="count-label">{events.length}</span>
                     </div>
                     <div className="evidence-chain">
-                      {highlightedEvents(c, asOf).map((e) => (
+                      {highlighted.map((e) => (
                         <button key={e.id} onClick={() => setSelectedEvent(e)}>
                           <EventDay date={e.at} />
                           <span>
@@ -823,6 +829,23 @@ export default function App() {
                         </button>
                       ))}
                     </div>
+                    {remainingEvidence.length > 0 && (
+                      <details className="more-evidence" key={`${c.id}-${day}`}>
+                        <summary>More observed evidence ({remainingEvidence.length})</summary>
+                        <div className="evidence-chain">
+                          {remainingEvidence.map((e) => (
+                            <button key={e.id} onClick={() => setSelectedEvent(e)}>
+                              <EventDay date={e.at} />
+                              <span>
+                                <b>{e.title}</b>
+                                <small>{e.id} · inspect evidence</small>
+                              </span>
+                              <ChevronRight size={14} />
+                            </button>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                     <div className="mini muted">
                       Only observations available by {dateLabel(asOf)}.
                     </div>
@@ -848,7 +871,7 @@ export default function App() {
                     ) : (
                       <div className="no-action">
                         <Check size={16} />
-                        Continue routine monitoring.<p>No unnecessary intervention.</p>
+                        Continue routine monitoring.
                       </div>
                     )}
                     <>
@@ -908,7 +931,7 @@ export default function App() {
               Local prototype · deterministic synthetic records
             </span>
             <span>
-              V1 / authored-v1.0 <span className="footer-divider">|</span> No live banking
+              V2 / {modelVersion} <span className="footer-divider">|</span> No live banking
               connections
             </span>
           </footer>
@@ -996,8 +1019,8 @@ export default function App() {
       <Sheet
         open={help}
         onClose={() => setHelp(false)}
-        title="A connected risk workflow"
-        description="Prototype guide · V1 scope"
+        title="Workspace guide"
+        description="Prototype guide · V2 models"
       >
         <div className="guide-chain">
           <span>Suspicious event</span>
@@ -1027,11 +1050,13 @@ export default function App() {
             <ArrowUpRight size={16} />
           </button>
         ))}
-        <h3>Honest simulation</h3>
+        <h3>Data & models</h3>
         <p>
-          Scores are authored indices, not trained predictions or calibrated probabilities. The
-          observed signals, ledger arithmetic, context rules and saved case workflow are functional.
-          No messages, holds, recovery or debt changes are executed.
+          Two histogram-boosted models trained on 2,000 synthetic customers produce the scores.
+          Repayment estimates an unpaid EMI balance seven days after due; scam shows the peak of
+          observed transaction estimates. These estimates are not validated for real customers. The
+          ledger, context rules and saved cases are functional. No messages, holds, recovery or debt
+          changes are executed.
         </p>
         <h3>Reset controls</h3>
         <p>
@@ -1086,6 +1111,8 @@ function Overview({
   const [band, setBand] = useState('all');
   const [channel, setChannel] = useState('all');
   const [review, setReview] = useState('all');
+  const [queuePage, setQueuePage] = useState(1);
+  useEffect(() => setQueuePage(1), [search, context, band, channel, review, day]);
   const rows = customers
     .map((customer) => {
       const r = scoreProvider.score(customer, endOfDay(day));
@@ -1115,43 +1142,47 @@ function Overview({
     {
       label: 'Customers monitored',
       value: customers.length,
-      detail: 'Deterministic synthetic portfolio',
+      detail: 'Synthetic portfolio',
       icon: UsersRound,
     },
     {
       label: 'Active scam alerts',
       value: rows.filter((r) => r.scam >= thresholds.scamAlert).length,
-      detail: 'Scam Risk ≥ 70 · role unconfirmed',
+      detail: `Scam episode peak ≥ ${Number(thresholds.scamAlert.toFixed(1))} · role unconfirmed`,
       icon: ShieldCheck,
     },
     {
       label: 'Repayment warnings',
       value: rows.filter((r) => r.repayment >= thresholds.repaymentWarning).length,
-      detail: 'Repayment Risk ≥ 60',
+      detail: `Seven-day estimate ≥ ${Number(thresholds.repaymentWarning.toFixed(1))}`,
       icon: Activity,
     },
     {
       label: 'Possible linked distress',
       value: rows.filter((r) => r.context === 'Possible scam-linked distress').length,
-      detail: 'Evidence-led temporal association',
+      detail: 'Linked signals · cause unconfirmed',
       icon: GitBranch,
     },
   ];
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(queuePage, pageCount);
+  const pageRows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   return (
     <>
       <div className="page-heading">
         <div>
           <div className="eyebrow">PORTFOLIO INTELLIGENCE</div>
           <h1>
-            The bigger picture<span className="heading-dot">.</span>
+            Portfolio overview<span className="heading-dot">.</span>
           </h1>
-          <p>Separate signals. Connected context. A more considered response.</p>
+          <p>Review scam and repayment risk across the portfolio.</p>
         </div>
         <div className="heading-actions">
           <span className="date-chip">As of {dateLabel(endOfDay(day))} 2026</span>
           <button className="primary-button" onClick={onReplay}>
             <Play size={15} />
-            Replay customer story
+            Replay Arjun’s timeline
           </button>
         </div>
       </div>
@@ -1172,7 +1203,7 @@ function Overview({
           <div className="card-heading">
             <div>
               <span className="eyebrow">DUAL-RISK MAP</span>
-              <h2>Where attention is needed</h2>
+              <h2>Risk distribution</h2>
             </div>
             <span className="mini muted">Select a customer to investigate</span>
           </div>
@@ -1200,13 +1231,11 @@ function Overview({
           <span className="eyebrow">FEATURED INVESTIGATION</span>
           <span className="story-number">01 / 05</span>
           <h2>
-            A scam loss today.
+            Suspicious outflow.
             <br />
-            An EMI problem
-            <br />
-            tomorrow.
+            Repayment shortfall.
           </h2>
-          <p>Follow Arjun’s history from a suspicious outflow to a shrinking repayment buffer.</p>
+          <p>How Arjun’s outflow reduced his EMI buffer.</p>
           <div className="story-flow">
             <span>
               <ShieldCheck size={17} />
@@ -1224,7 +1253,7 @@ function Overview({
             </span>
           </div>
           <button onClick={onReplay}>
-            Open Arjun’s story <ArrowUpRight size={18} />
+            View Arjun’s timeline <ArrowUpRight size={18} />
           </button>
           <div className="pattern-summary">
             <span>OBSERVED PATTERNS</span>
@@ -1309,7 +1338,7 @@ function Overview({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => {
+              {pageRows.map((r) => {
                 const saved = cases.find((c) => c.customerId === r.customer.id);
                 const action = interventions(r.customer, endOfDay(day))[0];
                 return (
@@ -1329,17 +1358,25 @@ function Overview({
                       </button>
                     </td>
                     <td>
-                      <b className={r.scam >= 70 ? 'coral' : ''}>{r.scam}</b>
+                      <b className={r.scam >= thresholds.scamAlert ? 'coral' : ''}>{riskLabel(r.scam)}</b>
                       <small className="table-delta">
-                        {r.scam - r.customer.scorePoints[0].scam >= 0 ? '+' : ''}
-                        {r.scam - r.customer.scorePoints[0].scam}
+                        {r.scam - scoreProvider.score(r.customer, endOfDay(1)).scamScore >= 0
+                          ? '+'
+                          : ''}
+                        {(r.scam - scoreProvider.score(r.customer, endOfDay(1)).scamScore).toFixed(1)}
                       </small>
                     </td>
                     <td>
-                      <b className={r.repayment >= 60 ? 'teal' : ''}>{r.repayment}</b>
+                      <b className={r.repayment >= thresholds.repaymentWarning ? 'teal' : ''}>
+                        {riskLabel(r.repayment)}
+                      </b>
                       <small className="table-delta">
-                        {r.repayment - r.customer.scorePoints[0].repayment >= 0 ? '+' : ''}
-                        {r.repayment - r.customer.scorePoints[0].repayment}
+                        {r.repayment -
+                          scoreProvider.score(r.customer, endOfDay(1)).repaymentScore >=
+                        0
+                          ? '+'
+                          : ''}
+                        {(r.repayment - scoreProvider.score(r.customer, endOfDay(1)).repaymentScore).toFixed(1)}
                       </small>
                     </td>
                     <td>
@@ -1374,6 +1411,22 @@ function Overview({
             </tbody>
           </table>
         </div>
+        {filtered.length > 0 && (
+          <div className="queue-pagination">
+            <span>Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} customers</span>
+            {pageCount > 1 && <div>
+              <button className="secondary-button" aria-label="Previous customer page"
+                disabled={currentPage === 1} onClick={() => setQueuePage(currentPage - 1)}>
+                <ChevronLeft size={14} /> Previous
+              </button>
+              <span>Page {currentPage} / {pageCount}</span>
+              <button className="secondary-button" aria-label="Next customer page"
+                disabled={currentPage === pageCount} onClick={() => setQueuePage(currentPage + 1)}>
+                Next <ChevronRight size={14} />
+              </button>
+            </div>}
+          </div>
+        )}
         {!filtered.length && (
           <Empty
             title="No matching customers"
@@ -1443,7 +1496,7 @@ function TransactionDetail({
         </div>
         <div>
           <dt>Transaction score</dt>
-          <dd>{t.risk} / 100 · simulated</dd>
+          <dd>{transactionModelScore(c, t)} / 100 · synthetic-trained ML</dd>
         </div>
         <div>
           <dt>Suspected subtype</dt>
@@ -1560,7 +1613,10 @@ function Transactions({
       label: `${money(t.amount)} · ${t.at.slice(11, 16)}`,
       animated: true,
       markerEnd: { type: MarkerType.ArrowClosed, color: '#8c9e94' },
-      style: { stroke: t.risk >= 70 ? '#ba6851' : '#6a897c', strokeWidth: 2 },
+      style: {
+        stroke: transactionModelScore(c, t) >= thresholds.scamAlert ? '#ba6851' : '#6a897c',
+        strokeWidth: 2,
+      },
       labelStyle: { fontSize: 11, fill: '#394d44' },
       labelBgPadding: [8, 5],
       labelBgBorderRadius: 4,
@@ -1576,7 +1632,7 @@ function Transactions({
           <h1>
             Follow the evidence<span className="heading-dot">.</span>
           </h1>
-          <p>Inspect the transaction. Understand the direction of flow.</p>
+          <p>Review transactions and account connections.</p>
         </div>
         <label className="select-label">
           Selected customer
@@ -1689,8 +1745,14 @@ function Transactions({
                       <span className="badge neutral">{t.status}</span>
                     </td>
                     <td>
-                      <b className={t.risk >= 70 ? 'coral' : ''}>{t.risk}</b>
-                      <small className="table-delta">Simulated</small>
+                      <b
+                        className={
+                          transactionModelScore(c, t) >= thresholds.scamAlert ? 'coral' : ''
+                        }
+                      >
+                        {transactionModelScore(c, t)}
+                      </b>
+                      <small className="table-delta">Trained ML</small>
                     </td>
                     <td className="signal-cell">{t.signals.join(' · ') || 'Routine record'}</td>
                     <td>
@@ -1839,6 +1901,7 @@ function Cases({
   const [error, setError] = useState('');
   const [followup, setFollowup] = useState('');
   const [disposition, setDisposition] = useState('');
+  const selectedCustomer = selected && customers.find((c) => c.id === selected.customerId);
   useEffect(() => {
     setNote('');
     setError('');
@@ -1855,7 +1918,12 @@ function Cases({
     setError('');
     onChange(
       selected,
-      { status, ...(status === 'Resolved' ? { disposition } : {}) },
+      {
+        status,
+        ...(status === 'Resolved'
+          ? { disposition, reviewedBy: selected.owner, reviewedAt: new Date().toISOString() }
+          : {}),
+      },
       `Status changed to ${status}${status === 'Resolved' ? `; disposition: ${disposition}` : ''}.`,
     );
   }
@@ -1867,7 +1935,7 @@ function Cases({
           <h1>
             From insight to action<span className="heading-dot">.</span>
           </h1>
-          <p>Recommendations become tracked tasks. Every change leaves a record.</p>
+          <p>Review tasks, follow-ups and activity.</p>
         </div>
         <button className="secondary-button" onClick={onReset}>
           <RotateCcw size={14} />
@@ -1916,7 +1984,8 @@ function Cases({
               </div>
               <h3>{record.title}</h3>
               <p>
-                {customers.find((c) => c.id === record.customerId)?.name} <span>·</span>{' '}
+                {customers.find((c) => c.id === record.customerId)?.name
+                  ?? record.investigation?.evidence.customerName ?? record.customerId} <span>·</span>{' '}
                 {record.priority} priority
               </p>
               <small>
@@ -1947,11 +2016,19 @@ function Cases({
               </div>
               <button
                 className="text-button"
-                onClick={() => onCustomer(customers.find((c) => c.id === selected.customerId)!)}
+                disabled={!selectedCustomer}
+                title={selectedCustomer ? 'Open current customer history' : 'Original customer history is outside the current demo portfolio'}
+                onClick={() => selectedCustomer && onCustomer(selectedCustomer)}
               >
                 Customer 360 <ArrowUpRight size={14} />
               </button>
             </div>
+            {!selectedCustomer && (
+              <p className="report-notice">
+                This case belongs to an earlier demo history. Its captured evidence, report and notes
+                remain saved; that history is outside the current customer portfolio.
+              </p>
+            )}
             <div className="case-fields">
               <label>
                 Status
@@ -1988,7 +2065,11 @@ function Cases({
                     setDisposition(e.target.value);
                     onChange(
                       selected,
-                      { disposition: e.target.value },
+                      {
+                        disposition: e.target.value,
+                        reviewedBy: e.target.value ? selected.owner : undefined,
+                        reviewedAt: e.target.value ? new Date().toISOString() : undefined,
+                      },
                       `Disposition recorded: ${e.target.value || 'Not selected'}.`,
                     );
                   }}
@@ -1998,9 +2079,22 @@ function Cases({
                   <option>Insufficient evidence</option>
                   <option>Customer report recorded</option>
                   <option>Escalated for assessment</option>
+                  <option>Confirmed fraud · human assessment</option>
+                  <option>Suspicious · continue monitoring</option>
+                  <option>False positive · human assessment</option>
+                  <option>Requires customer verification</option>
                 </select>
               </label>
             </div>
+            {selected.reviewedBy && selected.reviewedAt && (
+              <p className="mini muted">
+                Human disposition recorded by {selected.reviewedBy} ·{' '}
+                {new Date(selected.reviewedAt).toLocaleString('en-IN', {
+                  timeZone: 'Asia/Kolkata',
+                })}{' '}
+                IST
+              </p>
+            )}
             {error && (
               <p className="form-error" role="alert">
                 {error}
@@ -2020,6 +2114,7 @@ function Cases({
               </div>
               <small>Saved case snapshot; it does not alter replay history or scores.</small>
             </div>
+            <InvestigationPanel key={selected.id} record={selected} onChange={onChange} />
             <div className="case-two-col">
               <section>
                 <h3>Review checklist</h3>

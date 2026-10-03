@@ -8,3 +8,7 @@ playwright-report/
 tmp/
 .env
 .env.*
+
+.vercel
+.venv/
+__pycache__/

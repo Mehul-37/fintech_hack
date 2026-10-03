@@ -2,7 +2,7 @@ import type { Customer, Assessment } from './types';
 import { thresholds } from './config';
 import { financialState, visibleEvents, visibleTransactions } from './selectors';
 import { scoreProvider } from './scoring';
-import { dayOf } from './data';
+import { isSuspiciousTransfer, repaymentHistoryAt } from './ml-inference';
 export function assessContext(
   c: Customer,
   asOf: string,
@@ -27,14 +27,14 @@ export function assessContext(
   const passThrough = rapidOut
     ? rapidOut.amount / recentIncoming(rapidOut.at).reduce((n, t) => n + t.amount, 0)
     : 0;
-  const suspicious = ts.filter(
-    (t) =>
-      t.direction === 'out' &&
-      t.risk >= thresholds.scamAlert &&
-      t.newBeneficiary &&
-      t.unusualDevice,
-  );
-  const first = suspicious[0];
+  const suspicious = ts.filter((t) => isSuspiciousTransfer(c, t));
+  const firstFlag = suspicious[0];
+  // Compare against the start of the observed same-recipient burst, including
+  // earlier payments that individually fell below the model alert threshold.
+  const first = firstFlag ? ts.filter((t) => t.category === 'transfer' && t.direction === 'out' &&
+    t.account === firstFlag.account && Date.parse(t.at) <= Date.parse(firstFlag.at) &&
+    Date.parse(firstFlag.at) - Date.parse(t.at) <= thresholds.rapidMinutes * 60000)
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] ?? firstFlag : undefined;
   const priorCash = first
     ? c.openingCash +
       ts
@@ -43,14 +43,19 @@ export function assessContext(
     : 0;
   const shock = first && f.suspectedOutflow / Math.max(1, priorCash) >= thresholds.shockFraction;
   const preShockRepayment = first
-    ? ([...c.scorePoints].reverse().find((p) => p.day < dayOf(first.at))?.repayment ??
-      c.scorePoints[0].repayment)
+    ? scoreProvider.score(c, new Date(Date.parse(first.at) - 1).toISOString()).repaymentScore
     : risk.repaymentScore;
-  const competingIncomeGap = first && evidence.some((e) => e.kind === 'income');
+  const priorRepaymentWarning = repaymentHistoryAt(c, first?.at ?? asOf).some((h) => h.status === 'Missed' || h.daysLate > 7);
+  const latestIncomeGap = evidence.filter((e) => e.kind === 'income').at(-1);
+  const incomeAfterGap = latestIncomeGap ? ts.filter((t) => t.category === 'salary' &&
+    Date.parse(t.at) > Date.parse(latestIncomeGap.at)).reduce((sum, t) => sum + t.amount, 0) : 0;
+  const competingIncomeGap = first && latestIncomeGap && incomeAfterGap < c.salary * .7;
+  const competingDistress = shock &&
+    (competingIncomeGap || priorRepaymentWarning || preShockRepayment >= thresholds.repaymentWarning);
   const deterioration =
     evidence.some(
       (e) => e.kind === 'liquidity' && first && Date.parse(e.at) > Date.parse(first.at),
-    ) && risk.repaymentScore - preShockRepayment >= thresholds.repaymentRise;
+    ) && (risk.repaymentScore - preShockRepayment >= thresholds.repaymentRise || f.shortfall > 0);
   let context: Assessment['context'] = 'Healthy';
   let explanation =
     'Observed cash flow covers the upcoming installment. No suspicious payment sequence is present.';
@@ -63,24 +68,27 @@ export function assessContext(
     explanation = `${incoming.length} senders paid in; ${Math.round(passThrough * 100)}% moved onward within ${thresholds.rapidMinutes} minutes. This is consistent with possible pass-through activity, not proof of participation.`;
     alternative =
       'Legitimate pooled payments or business activity remain possible. Verify source and purpose of funds.';
-  } else if (shock && (competingIncomeGap || preShockRepayment >= thresholds.repaymentWarning)) {
+  } else if ((suspicious.length > 0 && risk.scamScore < thresholds.scamContextConfidence) ||
+    competingDistress) {
     context = 'Uncertain / manual review';
-    strength = 'Competing explanation · manual review';
-    explanation =
-      'Suspicious outflows coexist with an income interruption or pre-existing repayment warning. The available sequence does not isolate scam-linked distress.';
+    strength = competingDistress ? 'Competing explanation · manual review'
+      : 'Moderate estimate · verification needed';
+    explanation = competingDistress
+      ? 'Suspicious outflows coexist with an income interruption or a repayment warning known before the outflow. The available sequence does not isolate scam-linked distress.'
+      : 'The transaction estimate is moderate. Verify the payment purpose and customer account before treating the cash pressure as scam-linked distress.';
     alternative =
       'Investigate the suspicious payment and verify income / prior obligations separately before attributing the repayment change.';
   } else if (shock && deterioration && f.shortfall > 0) {
     context = 'Possible scam-linked distress';
-    strength = 'Temporal association · confirmation pending';
-    explanation = `Repayment Risk increased by ${risk.repaymentScore - c.scorePoints[0].repayment} points after a suspicious ₹${f.suspectedOutflow.toLocaleString('en-IN')} outflow depleted the buffer. The EMI falls before salary; this sequence suggests possible scam-linked distress.`;
+    strength = 'Due-date cash pressure · confirmation pending';
+    explanation = `A suspicious ₹${f.suspectedOutflow.toLocaleString('en-IN')} outflow depleted the buffer, followed by liquidity pressure and a ₹${f.shortfall.toLocaleString('en-IN')} due-date cash shortfall. This suggests possible scam-linked distress. The separate seven-day delinquency estimate is ${risk.repaymentScore}/100; salary arriving during that window may still allow payment.`;
     alternative =
       'Customer confirmation is pending. Unrecorded income, other obligations, or recovery could change the interpretation.';
   } else if (suspicious.length) {
     context = 'Suspected scam';
     strength = 'Multiple observed signals · unconfirmed';
     explanation =
-      'A first-seen beneficiary, unusual device, and rapid large outflows coincide with a cash shock. Investigate the completed transfers; the customer’s role is unconfirmed.';
+      'The model flags completed outgoing transfers using observed payment patterns. Review the amount, beneficiary, device and timing evidence; a familiar device can also be used during a scam. The customer’s role is unconfirmed.';
     alternative =
       'An authorized payment may still be a scam. Device and amount patterns alone cannot identify a scam subtype.';
   } else if (evidence.some((e) => e.kind === 'income') && risk.repaymentScore >= 35) {
@@ -90,6 +98,11 @@ export function assessContext(
       'Expected salary is absent or delayed while essential outflows continue. Repayment deterioration is associated with an income gap; there is no suspicious-outflow chain.';
     alternative =
       'Verify payroll timing and other income. No automatic scam-victim inference is warranted.';
+  } else if (risk.repaymentScore >= thresholds.repaymentWarning || f.shortfall > 0) {
+    context = 'Uncertain / manual review';
+    strength = 'Repayment pressure · verify cash flow';
+    explanation = 'The repayment estimate or due-date cash gap needs review. No suspicious-outflow chain is established; verify income timing, available funds and existing obligations.';
+    alternative = 'Expected salary, other income or available credit may change the outcome. Cash pressure alone does not establish scam involvement.';
   } else if (
     ts.some(
       (t) => t.newBeneficiary && t.amount >= c.usualTransfer * thresholds.largeTransferMultiple,

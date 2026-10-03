@@ -27,7 +27,7 @@ export function interventions(
         action(
           'beneficiary',
           'Request beneficiary review',
-          'Review B-482 and future payments; completed transfers cannot be held.',
+          'Review the observed beneficiary and future payments; completed transfers cannot be held.',
         ),
         action(
           'reminder',
@@ -73,6 +73,10 @@ export function interventions(
         ),
       ];
     case 'Uncertain / manual review':
+      if (assessment.strength === 'Repayment pressure · verify cash flow') return [
+        action('cashflow', 'Create income / cash-flow review',
+          'Verify income timing, available funds and upcoming commitments.', 'Medium'),
+      ];
       return [
         action(
           'verification',

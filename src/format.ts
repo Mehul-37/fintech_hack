@@ -10,3 +10,5 @@ export const dateLabel = (date: string) =>
     month: 'short',
     timeZone: 'Asia/Kolkata',
   }).format(new Date(date));
+export const riskLabel = (score: number) => score > 0 && score < .1
+  ? '<0.1' : score > 99.9 ? '>99.9' : score.toFixed(1);

@@ -1,0 +1,42 @@
+{
+  "seed": 20261005,
+  "customers": 2000,
+  "provider_version": "histgb-synthetic-v2.1",
+  "scope": "New independent simulation after generator/model freeze; no model fitting or selection on these results",
+  "dataset_hashes": {
+    "behavioral_profiles.csv": "787eb78073116b2aef5142978149a8a7e9d810fd25c29c4bfdd84d66c0dc9cdc",
+    "customer_events.csv": "bfcdff53c7cd5a85d53766ab0c4f6d0a691c193bf0ed143cee1f929f6384f3ce",
+    "customers.csv": "a571120ebd293264fd5ec7e51f8b85cc423abb8bf2a5c4b0b5223cc52f406bef",
+    "devices.csv": "2b7cf2354aeca6ed9ddad087f6d13fb40999f5027040923b77520b075156ec14",
+    "loans.csv": "b06a3bab1faa9c74c49421df24a990c91e7494d448a95aa8afb9c0c499ee7659",
+    "merchants.csv": "d579f2877020a5200607bf542175a32b893760bbc0c40c5a4ed2b96b01b59584",
+    "repayments.csv": "5aece1b61113048d3cedf2cdd3fa2d16b185cc945df42d724b3a8de8e4bfd6ac",
+    "transactions.csv": "9e82ff4810682021d099b08b298ed2da85e71b83d6606cd7e3c60d9592ee1288"
+  },
+  "models": {
+    "fraud": {
+      "rows": 23313,
+      "positives": 988,
+      "pr_auc": 0.7313609935824704,
+      "roc_auc": 0.9769025166499675,
+      "brier": 0.020136496516658962,
+      "log_loss": 0.06841312023851537,
+      "precision": 0.651685393258427,
+      "recall": 0.7044534412955465,
+      "false_alerts_per_1000": 15.956762321451553,
+      "threshold": 0.275
+    },
+    "repayment": {
+      "rows": 8000,
+      "positives": 2359,
+      "pr_auc": 0.8543142978848132,
+      "roc_auc": 0.8998639374909023,
+      "brier": 0.09908189634156739,
+      "log_loss": 0.3304602967807463,
+      "precision": 0.6835581480131243,
+      "recall": 0.79482831708351,
+      "false_alerts_per_1000": 108.5,
+      "threshold": 0.275
+    }
+  }
+}

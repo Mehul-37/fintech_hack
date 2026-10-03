@@ -19,6 +19,8 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { Context, Customer } from './types';
 import { dayOf, endOfDay } from './data';
 import { scoreProvider } from './engine';
+import { financialState } from './selectors';
+import { riskLabel } from './format';
 export const contextClass = (c: Context) =>
   c === 'Healthy'
     ? 'healthy'
@@ -70,7 +72,7 @@ export function Score({
       <div className="eyebrow">
         <span className={`line-key ${color}`} />
         {label}
-        <span title="Authored synthetic index, 0–100. Not a probability." className="score-info">
+        <span title="Trained on synthetic data. Repayment estimates seven-day delinquency; scam episode peaks are historical maxima, not account probabilities." className="score-info">
           0–100
         </span>
       </div>
@@ -82,11 +84,11 @@ export function Score({
           transition={{ duration: 0.25 }}
           className={color}
         >
-          {value}
+          {riskLabel(value)}
         </motion.strong>
         <span className={`delta ${value > baseline ? 'up' : ''}`}>
           {value > baseline ? '+' : ''}
-          {value - baseline} <small>vs baseline</small>
+          {(value - baseline).toFixed(1)} <small>vs baseline</small>
         </span>
       </div>
       <div className="score-track">
@@ -97,16 +99,20 @@ export function Score({
   );
 }
 export function RiskChart({ customer, day }: { customer: Customer; day: number }) {
-  const points = customer.scorePoints
-    .filter((p) => p.day <= day)
-    .map((p) => ({ ...p, label: `Sep ${p.day}` }));
+  const points = Array.from({ length: day }, (_, i) => {
+    const snapshot = scoreProvider.score(customer, endOfDay(i + 1));
+    const financial = financialState(customer, endOfDay(i + 1));
+    return { day: i + 1, scam: snapshot.scamScore, repayment: snapshot.repaymentScore,
+      cashGap: Math.min(100, 100 * financial.shortfall / customer.loan.emi), label: `Sep ${i + 1}` };
+  });
   const current = scoreProvider.score(customer, endOfDay(day));
   const data =
     points.at(-1)?.day === day
       ? points
       : [
           ...points,
-          { day, scam: current.scamScore, repayment: current.repaymentScore, label: `Sep ${day}` },
+          { day, scam: current.scamScore, repayment: current.repaymentScore,
+            cashGap: Math.min(100, 100 * financialState(customer, endOfDay(day)).shortfall / customer.loan.emi), label: `Sep ${day}` },
         ];
   return (
     <div
@@ -141,10 +147,11 @@ export function RiskChart({ customer, day }: { customer: Customer; day: number }
           />
           <Tooltip
             labelFormatter={(v) => `September ${v}, 2026`}
+            formatter={(v) => `${Number(v).toFixed(1)}%`}
             contentStyle={{ borderRadius: 10, border: '1px solid #dde5df', fontSize: 12 }}
           />
           <Area
-            name="Scam Risk · simulated"
+            name="Scam episode peak · ML"
             dataKey="scam"
             type="stepAfter"
             stroke="#ba5036"
@@ -154,7 +161,7 @@ export function RiskChart({ customer, day }: { customer: Customer; day: number }
             dot={{ r: 3 }}
           />
           <Line
-            name="Repayment Risk · simulated"
+            name="Repayment Risk · ML"
             dataKey="repayment"
             type="stepAfter"
             stroke="#44776c"
@@ -163,6 +170,9 @@ export function RiskChart({ customer, day }: { customer: Customer; day: number }
             dot={{ r: 3 }}
             isAnimationActive={false}
           />
+          <Line name="Due-date cash gap · % of EMI (ledger, not ML)" dataKey="cashGap"
+            type="stepAfter" stroke="#9b761e" strokeWidth={2} strokeDasharray="2 4"
+            dot={false} isAnimationActive={false} />
           <ReferenceLine x={day} stroke="#7d8e86" strokeDasharray="2 3" />
         </AreaChart>
       </ResponsiveContainer>

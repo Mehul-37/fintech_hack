@@ -1,0 +1,57 @@
+{
+  "schema_version": "meridian-synthetic-2.1",
+  "seed": 20261006,
+  "start": "2026-08-01T00:00:00+05:30",
+  "history_cutoff": "2026-09-29T23:59:59.999000+05:30",
+  "followup_cutoff": "2026-11-05T23:59:59.999000+05:30",
+  "currency": "INR",
+  "authoritative_money": "integer paise",
+  "counts": {
+    "customers": 768,
+    "behavioral_profiles": 768,
+    "devices": 922,
+    "merchants": 400,
+    "transactions": 28030,
+    "customer_events": 8169,
+    "loans": 768,
+    "repayments": 2304
+  },
+  "history_transactions": 17162,
+  "followup_transactions": 10177,
+  "pending_transactions": 691,
+  "cohort_counts": {
+    "buffered_scam": 30,
+    "recovered_scam": 30,
+    "familiar_device_scam": 30,
+    "small_scam": 30,
+    "legitimate_large": 30,
+    "new_device_legitimate": 30,
+    "prior_distress_unrelated_scam": 30,
+    "income_gap": 30,
+    "conflicting": 30,
+    "same_sender": 30,
+    "pooled_payments": 30,
+    "multiple_episodes": 30,
+    "healthy": 268,
+    "organic_distress": 48,
+    "mule": 16,
+    "ambiguous": 22,
+    "scam_shock": 30,
+    "mild_distress": 24
+  },
+  "hashes": {
+    "behavioral_profiles.csv": "bf746d4866e6f082cf6e5f7fce5a14c39b5a16d16d3fabf56836986d9344acd2",
+    "customer_events.csv": "8c57fbc0eb62ca92618a4c38f45f1aad44db2b25518f3536dccbda7e6df9e62e",
+    "customers.csv": "70d7b1884401f3b87d9e615547fc08e8ea452b232c990082684546eab647fca7",
+    "devices.csv": "a6e148636e3604b56773284457d9d1a2a09148bbddb0d8410f847ef6d39a25fc",
+    "loans.csv": "fe5addd0d605b680d367a8141cde13df64f773a818d121a40447c4369cfbc072",
+    "merchants.csv": "a1b94c23ea6f0a1d8815733a6aa26eb710786c215fb69238dadcdbe7f1d9256b",
+    "repayments.csv": "75ad7f2e5a948da2073763c09be797e668d50ff5af70a9826fa1316fbfca6448",
+    "transactions.csv": "7f31fc97acae2d59a05b4da41144affc0c383c9b965076fb8d54299f880f952b"
+  },
+  "limitations": [
+    "All synthetic; no real population calibration",
+    "60 history days; temporal generalization unverified",
+    "Reputation fields are opening assumptions; no downstream feature uses full-run summary"
+  ]
+}

@@ -21,6 +21,8 @@ export interface Transaction {
   newBeneficiary?: boolean;
   unusualDevice?: boolean;
   knownAt?: string;
+  loanId?: string;
+  installmentNum?: number;
 }
 export interface CustomerEvent {
   id: string;
@@ -48,16 +50,20 @@ export interface Customer {
   creditLimit: number;
   usualTransfer: number;
   loan: {
+    id?: string;
+    installmentNum?: number;
     principal: number;
     emi: number;
     dueAt: string;
     salaryAt: string;
-    history: { month: string; status: 'Paid' | 'Late' | 'Missed'; daysLate: number }[];
+    history: { month: string; status: 'Paid' | 'Late' | 'Missed'; daysLate: number; observedAt?: string }[];
   };
   transactions: Transaction[];
   events: CustomerEvent[];
   scorePoints: ScorePoint[];
   story?: string;
+  dataSource?: 'authored' | 'generated-holdout';
+  sourceSeed?: number;
 }
 export interface FinancialState {
   cash: number;
@@ -123,4 +129,7 @@ export interface CaseRecord {
   checklist: string[];
   notes: { at: string; text: string }[];
   activity: AuditEntry[];
+  investigation?: import('./investigation').InvestigationSnapshot;
+  reviewedBy?: string;
+  reviewedAt?: string;
 }

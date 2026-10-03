@@ -1,6 +1,8 @@
 import type { ScoreProvider, RiskSnapshot } from './types';
 import { dayOf } from './data';
 import { visibleEvents, visibleTransactions } from './selectors';
+import { modelProbability, modelVersion, probabilityScore, repaymentFeatures, transactionModelScore } from './ml-inference';
+import { thresholds } from './config';
 export const simulatedScoreProvider: ScoreProvider = {
   score(c, asOf): RiskSnapshot {
     const p =
@@ -34,5 +36,22 @@ export const simulatedScoreProvider: ScoreProvider = {
   },
 };
 
-// Replace this binding for V2. Views depend on the provider contract.
-export const scoreProvider: ScoreProvider = simulatedScoreProvider;
+// All current views share this trained provider; authored values stay an explicit reference.
+export const trainedScoreProvider: ScoreProvider = {
+  score(c, asOf): RiskSnapshot {
+    const transactions = visibleTransactions(c, asOf).filter((t) => t.status === 'Completed');
+    const relevant = transactions.filter((t) => t.category === 'transfer');
+    const scored = relevant.map((t) => ({ t, score: transactionModelScore(c, t) }));
+    const peak = scored.reduce<(typeof scored)[number] | undefined>((p, s) => !p || s.score > p.score ? s : p, undefined);
+    return {
+      customerId: c.id, asOf, source: 'model', providerVersion: modelVersion,
+      scamScore: peak?.score ?? 0,
+      repaymentScore: probabilityScore(modelProbability('repayment', repaymentFeatures(c, asOf))),
+      evidenceIds: visibleEvents(c, asOf).map((e) => e.id),
+      observedSignals: [...new Set(transactions.flatMap((t) => t.signals))],
+      latestTransactionScore: transactions.length ? transactionModelScore(c, transactions.at(-1)!) : undefined,
+      episode: peak && peak.score >= thresholds.scamAlert ? { peak: peak.score, observedAt: peak.t.at, windowStart: peak.t.at, status: 'open' } : undefined,
+    };
+  },
+};
+export const scoreProvider: ScoreProvider = trainedScoreProvider;
