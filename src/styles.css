@@ -3225,7 +3225,8 @@ button:not(:disabled):active {
   }
 }
 
-/* Splash Intro Morph Animation */
+/* ─── Splash Intro Animation ─────────────────────────────────────────── */
+
 .intro-overlay {
   position: fixed;
   z-index: 99999;
@@ -3233,55 +3234,75 @@ button:not(:disabled):active {
   align-items: center;
   justify-content: center;
   background: #234c3d;
-  color: #d0e9b9;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  will-change: top, left, width, height, border-radius, font-size, transform;
   pointer-events: none;
+  /* default: no transition (instant repositioning for blank/letter stages) */
 }
 
-.intro-overlay.stage-initial {
+/* STAGE: blank — full green screen, letter invisible */
+.intro-overlay.stage-blank {
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  border-radius: 0px;
+  border-radius: 0;
   opacity: 1;
 }
 
-.intro-overlay.stage-morph {
-  transition:
-    top 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    left 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    width 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    height 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    border-radius 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 1.15s cubic-bezier(0.16, 1, 0.3, 1);
+/* STAGE: letter — same full-screen size, letter reveals */
+.intro-overlay.stage-letter {
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  opacity: 1;
 }
 
+/* STAGE: morph — animate position/size to brand badge */
+.intro-overlay.stage-morph {
+  opacity: 1;
+  transition:
+    top    1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    left   1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    width  1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    height 1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 1.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* STAGE: done — fade out gently */
 .intro-overlay.stage-done {
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition:
+    top    1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    left   1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    width  1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    height 1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s ease 0.55s;
 }
 
+/* ─── Letter wrapper — outer sizes along with overlay ─── */
 .intro-mark {
-  font-family: inherit;
-  font-weight: 600;
-  line-height: 1;
   display: grid;
   place-items: center;
-  user-select: none;
-  color: #d0e9b9;
+  overflow: hidden;
+  /* scale down as overlay shrinks */
   transition:
-    font-size 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    letter-spacing 1.15s cubic-bezier(0.16, 1, 0.3, 1),
-    padding 1.15s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size     1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    letter-spacing 1.3s cubic-bezier(0.22, 1, 0.36, 1),
+    padding-right  1.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.intro-overlay.stage-initial .intro-mark {
-  font-size: 88px;
-  letter-spacing: -6px;
-  padding-right: 6px;
+.intro-overlay.stage-blank .intro-mark,
+.intro-overlay.stage-letter .intro-mark {
+  font-size: 96px;
+  letter-spacing: -7px;
+  padding-right: 7px;
+  font-weight: 600;
+  line-height: 1;
+  color: #d0e9b9;
+  user-select: none;
 }
 
 .intro-overlay.stage-morph .intro-mark,
@@ -3289,41 +3310,48 @@ button:not(:disabled):active {
   font-size: 28px;
   letter-spacing: -2px;
   padding-right: 2px;
+  font-weight: 600;
+  line-height: 1;
+  color: #d0e9b9;
+  user-select: none;
 }
 
-.intro-glow {
-  position: absolute;
-  width: 320px;
-  height: 320px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(208, 233, 185, 0.2) 0%, rgba(35, 76, 61, 0) 70%);
-  pointer-events: none;
-  animation: introPulse 1.4s ease-in-out infinite alternate;
-  transition: opacity 0.6s ease;
+/* ─── Inner letter — clips left→right ─── */
+.intro-mark-inner {
+  display: block;
+  /* hidden by default */
+  clip-path: inset(0 100% 0 0);
 }
 
-.intro-overlay.stage-morph .intro-glow,
-.intro-overlay.stage-done .intro-glow {
-  opacity: 0;
+.intro-overlay.stage-blank .intro-mark-inner {
+  clip-path: inset(0 100% 0 0);
 }
 
-@keyframes introPulse {
-  0% { transform: scale(0.9); opacity: 0.5; }
-  100% { transform: scale(1.15); opacity: 1; }
+/* Animate the clip from right=100% to right=0% over 680ms */
+.intro-overlay.stage-letter .intro-mark-inner {
+  clip-path: inset(0 0% 0 0);
+  transition: clip-path 0.68s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+/* Once morphing, letter stays fully visible, no clip */
+.intro-overlay.stage-morph .intro-mark-inner,
+.intro-overlay.stage-done .intro-mark-inner {
+  clip-path: inset(0 0% 0 0);
+}
+
+/* ─── App shell fades in behind the overlay ─── */
 .app-shell.intro-active {
-  animation: appShellFadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s backwards;
+  animation: appShellReveal 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.35s backwards;
 }
 
-@keyframes appShellFadeIn {
+@keyframes appShellReveal {
   from {
-    opacity: 0.15;
-    filter: blur(4px);
+    opacity: 0;
+    transform: scale(0.985);
   }
   to {
     opacity: 1;
-    filter: blur(0px);
+    transform: scale(1);
   }
 }
 

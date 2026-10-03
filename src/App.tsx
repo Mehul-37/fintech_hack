@@ -104,67 +104,58 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [help, setHelp] = useState(false);
   const [resetDialog, setResetDialog] = useState(false);
-  const [introStage, setIntroStage] = useState<'initial' | 'morph' | 'done'>('initial');
+  const [introStage, setIntroStage] = useState<'blank' | 'letter' | 'morph' | 'done'>('blank');
   const [introMounted, setIntroMounted] = useState(true);
   const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const brandMarkRef = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => {
-    const updateTarget = () => {
-      if (brandMarkRef.current) {
-        const rect = brandMarkRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          setTargetRect({
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-          });
-        }
+  const measureTarget = () => {
+    if (brandMarkRef.current) {
+      const rect = brandMarkRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setTargetRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
       }
-    };
+    }
+  };
 
-    updateTarget();
-    const frame = requestAnimationFrame(updateTarget);
-
-    const morphTimer = setTimeout(() => {
-      updateTarget();
+  const runIntroSequence = () => {
+    // stage 0: blank green screen (already set)
+    // stage 1: letter draws in left→right at 350ms
+    const t1 = setTimeout(() => setIntroStage('letter'), 350);
+    // stage 2: morph shrink to badge at 1350ms
+    const t2 = setTimeout(() => {
+      measureTarget();
       setIntroStage('morph');
-    }, 700);
+    }, 1350);
+    // stage 3: fade out at 2650ms
+    const t3 = setTimeout(() => setIntroStage('done'), 2650);
+    // unmount at 3200ms
+    const t4 = setTimeout(() => setIntroMounted(false), 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+  };
 
-    const doneTimer = setTimeout(() => {
-      setIntroStage('done');
-    }, 1900);
-
-    const unmountTimer = setTimeout(() => {
-      setIntroMounted(false);
-    }, 2350);
-
-    window.addEventListener('resize', updateTarget);
+  useEffect(() => {
+    measureTarget();
+    const frame = requestAnimationFrame(measureTarget);
+    const cleanup = runIntroSequence();
+    window.addEventListener('resize', measureTarget);
     return () => {
       cancelAnimationFrame(frame);
-      clearTimeout(morphTimer);
-      clearTimeout(doneTimer);
-      clearTimeout(unmountTimer);
-      window.removeEventListener('resize', updateTarget);
+      cleanup();
+      window.removeEventListener('resize', measureTarget);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const replayIntro = () => {
-    if (brandMarkRef.current) {
-      const rect = brandMarkRef.current.getBoundingClientRect();
-      setTargetRect({
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      });
-    }
+    measureTarget();
     setIntroMounted(true);
-    setIntroStage('initial');
-    setTimeout(() => setIntroStage('morph'), 700);
-    setTimeout(() => setIntroStage('done'), 1900);
-    setTimeout(() => setIntroMounted(false), 2350);
+    setIntroStage('blank');
+    const t1 = setTimeout(() => setIntroStage('letter'), 350);
+    const t2 = setTimeout(() => { measureTarget(); setIntroStage('morph'); }, 1350);
+    const t3 = setTimeout(() => setIntroStage('done'), 2650);
+    const t4 = setTimeout(() => setIntroMounted(false), 3200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   };
 
   const c = customers.find((c) => c.id === customerId)!;
@@ -244,7 +235,7 @@ export default function App() {
   }
   const caseRecord = cases.find((r) => r.id === selectedCase);
   const morphStyle: React.CSSProperties =
-    introStage === 'initial'
+    introStage === 'blank' || introStage === 'letter'
       ? {
           top: 0,
           left: 0,
@@ -268,11 +259,12 @@ export default function App() {
           style={morphStyle}
           aria-hidden="true"
         >
-          <div className="intro-glow" />
-          <span className="intro-mark">m</span>
+          <span className="intro-mark">
+            <span className="intro-mark-inner">m</span>
+          </span>
         </div>
       )}
-      <div className={`app-shell ${introMounted && introStage === 'initial' ? 'intro-active' : ''}`}>
+      <div className={`app-shell ${introMounted && (introStage === 'blank' || introStage === 'letter') ? 'intro-active' : ''}`}>
         <aside className="sidebar">
           <a
             className="brand"
