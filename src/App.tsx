@@ -85,6 +85,28 @@ const contexts: Context[] = [
   'Possible mule',
   'Uncertain / manual review',
 ];
+
+function BrandIcon({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <path
+        d="M 22,34 L 22,78 L 22,46 C 22,35 30,32 38,32 C 48,32 51,38 51,48 L 51,78 L 51,46 C 51,35 59,32 67,32 C 77,32 80,38 80,48 L 80,78"
+        stroke="currentColor"
+        strokeWidth="10.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function App() {
   const [section, setSection] = useState<Section>('overview');
   const [customerId, setCustomerId] = useState(customers[0].id);
@@ -118,30 +140,51 @@ export default function App() {
     }
   };
 
+  const introTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearIntroTimers = () => {
+    introTimersRef.current.forEach((t) => clearTimeout(t));
+    introTimersRef.current = [];
+  };
+
   const runIntroSequence = () => {
-    // stage 0: blank green screen (already set)
-    // stage 1: letter draws in left→right at 350ms
-    const t1 = setTimeout(() => setIntroStage('letter'), 350);
-    // stage 2: morph shrink to badge at 1350ms
+    clearIntroTimers();
+    setIntroMounted(true);
+    setIntroStage('blank');
+    // Stage 0: blank full-screen emerald (0-300ms)
+    // Stage 1: letter 'm' traces in left-to-right (takes ~880ms)
+    const t1 = setTimeout(() => setIntroStage('letter'), 300);
+    // Stage 2: morph smoothly shrinks to exact brand badge position (1000ms duration)
     const t2 = setTimeout(() => {
       measureTarget();
       setIntroStage('morph');
     }, 1350);
-    // stage 3: fade out at 2650ms
-    const t3 = setTimeout(() => setIntroStage('done'), 2650);
-    // unmount at 3200ms
-    const t4 = setTimeout(() => setIntroMounted(false), 3200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    // Stage 3: morph complete, seamless crossfade with underlying brand mark
+    const t3 = setTimeout(() => setIntroStage('done'), 2400);
+    // Stage 4: unmount overlay safely
+    const t4 = setTimeout(() => setIntroMounted(false), 2750);
+    introTimersRef.current = [t1, t2, t3, t4];
   };
+
+  useEffect(() => {
+    if (introMounted) {
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+  }, [introMounted]);
 
   useEffect(() => {
     measureTarget();
     const frame = requestAnimationFrame(measureTarget);
-    const cleanup = runIntroSequence();
+    const timer = setTimeout(measureTarget, 100);
+    runIntroSequence();
     window.addEventListener('resize', measureTarget);
     return () => {
       cancelAnimationFrame(frame);
-      cleanup();
+      clearTimeout(timer);
+      clearIntroTimers();
       window.removeEventListener('resize', measureTarget);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -149,13 +192,7 @@ export default function App() {
 
   const replayIntro = () => {
     measureTarget();
-    setIntroMounted(true);
-    setIntroStage('blank');
-    const t1 = setTimeout(() => setIntroStage('letter'), 350);
-    const t2 = setTimeout(() => { measureTarget(); setIntroStage('morph'); }, 1350);
-    const t3 = setTimeout(() => setIntroStage('done'), 2650);
-    const t4 = setTimeout(() => setIntroMounted(false), 3200);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
+    runIntroSequence();
   };
 
   const c = customers.find((c) => c.id === customerId)!;
@@ -244,7 +281,7 @@ export default function App() {
           borderRadius: '0px',
         }
       : {
-          top: targetRect ? targetRect.top : 30,
+          top: targetRect ? targetRect.top : 35,
           left: targetRect ? targetRect.left : 26,
           width: targetRect ? targetRect.width : 34,
           height: targetRect ? targetRect.height : 36,
@@ -259,9 +296,23 @@ export default function App() {
           style={morphStyle}
           aria-hidden="true"
         >
-          <span className="intro-mark">
-            <span className="intro-mark-inner">m</span>
-          </span>
+          <div className="intro-mark-wrapper">
+            <svg
+              viewBox="0 0 100 100"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="intro-trace-svg"
+            >
+              <path
+                className="intro-trace-path"
+                d="M 22,34 L 22,78 L 22,46 C 22,35 30,32 38,32 C 48,32 51,38 51,48 L 51,78 L 51,46 C 51,35 59,32 67,32 C 77,32 80,38 80,48 L 80,78"
+                stroke="currentColor"
+                strokeWidth="10.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         </div>
       )}
       <div className={`app-shell ${introMounted && (introStage === 'blank' || introStage === 'letter') ? 'intro-active' : ''}`}>
@@ -276,8 +327,17 @@ export default function App() {
             }}
             title="Click to replay intro animation"
           >
-            <span ref={brandMarkRef} className="brand-mark">
-              m
+            <span
+              ref={brandMarkRef}
+              className="brand-mark"
+              style={{
+                opacity: introMounted && introStage !== 'done' ? 0 : 1,
+                transition: 'opacity 0.25s ease',
+              }}
+              aria-label="Meridian brand mark"
+            >
+              <BrandIcon className="brand-logo-icon" />
+              <span className="sr-only">m</span>
             </span>
             <span>
               meridian<span className="brand-sub">RISK WORKSPACE</span>
