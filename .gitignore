@@ -12,3 +12,26 @@ tmp/
 .vercel
 .venv/
 __pycache__/
+
+# Local working notes, prompts, and handoffs
+/DEMO_SCRIPT.md
+/GEMINI_DATASET_HANDOFF.md
+/IMPLEMENTATION_PROMPT.md
+/INVESTIGATION_REPORTER.md
+/ML_EXECUTION_PLAN.md
+/ML_RESULTS.md
+/ML_VERIFICATION.md
+/MODEL_REVIEW.md
+/PROTOTYPE_PLAN.md
+/SYNTHETIC_DATASET_SPECIFICATION.md
+/V2_HANDOFF.md
+/VERIFICATION.md
+
+# Local recordings, screenshots, references, and old model snapshots
+/output/
+/screenshots/
+/research/
+/ml/archive/
+/scripts/export-demo.py
+/scripts/inspect-recording.mjs
+/scripts/record-demo.mjs

@@ -11,7 +11,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe ml/export_demo.py
 ```
 
-The already-created `.venv` and saved artifacts are ready to use; recreating them is optional. The frontend uses the exported forest, so Python need not remain running while presenting. Training plus feature construction took roughly 7–10 seconds locally. Export relies on scikit-learn private tree structures, so keep the pinned version and numerical parity test when changing dependencies.
+Saved artifacts are included; create `.venv` with the commands above to reproduce training. The frontend uses the exported forest, so Python need not remain running while presenting. Training plus feature construction took roughly 7–10 seconds locally. Export relies on scikit-learn private tree structures, so keep the pinned version and numerical parity test when changing dependencies.
 
 ## Exact training process
 
@@ -48,7 +48,7 @@ npm test -- --configLoader runner
 npm run build -- --configLoader runner
 ```
 
-Results and cohort error counts are in `artifacts/evaluation.json`. `../ML_RESULTS.md` explains what they mean and their limits. The current evaluation is customer-disjoint and synthetic; it does not establish causal linkage or temporal/real-world generalization. There is no XGBoost comparison or imported pretrained model in this run.
+Results and cohort error counts are in `artifacts/evaluation.json`. The current evaluation is customer-disjoint and synthetic; it does not establish causal linkage or temporal/real-world generalization. There is no XGBoost comparison or imported pretrained model in this run.
 
 ## Presentation export and fresh audit
 
@@ -58,7 +58,7 @@ Results and cohort error counts are in `artifacts/evaluation.json`. `../ML_RESUL
 .\.venv\Scripts\python.exe ml/audit.py
 ```
 
-This generates 2,000 further customers with seed 20261005 and distinct AUD IDs, validates them, and evaluates the frozen models and thresholds. It does not refit anything. `artifacts/independent-audit.json` holds the results. V2.0 models and source code are preserved under `archive/v2.0/`; their old metrics describe an easier simulator and are not a like-for-like comparison. See `../MODEL_REVIEW.md`.
+This generates 2,000 further customers with seed 20261005 and distinct AUD IDs, validates them, and evaluates the frozen models and thresholds. It does not refit anything. `artifacts/independent-audit.json` holds the results.
 
 
 Portfolio expansion: the recording portfolio now contains 112 synthetic customer records. The original 24 IDs and histories are retained; 88 new records come from a separately validated source at `data/presentation-extension/`, seed 20261006, with distinct EXT IDs. New records use the same frozen trained models. Queue pagination displays 20 records per page; search/filtering covers the whole portfolio. No real customer data was imported and no model retraining was needed.

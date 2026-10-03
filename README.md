@@ -2,7 +2,7 @@
 
 Meridian combines two separate trained models with an evidence-based context layer. A transaction model estimates simulated fraud involvement. A repayment model estimates whether the next EMI will still have an unpaid balance at the end of its seventh calendar day after due date. Context compares the observed payment sequence, cash shock, income and loan position to suggest a possible connection. It does not prove causation or customer role.
 
-V2.1 is implemented locally. Read [MODEL_REVIEW.md](MODEL_REVIEW.md) for the score-distribution repair and independent audit. The app labels synthetic scenarios and trained model estimates, uses actual exported model inference, and preserves the investigation reporter and browser-local cases. The portfolio contains five authored comparison scenarios and 107 independently generated customer histories scored by the models; the 2,000 generated customers supply training and evaluation data, not 2,000 extra dashboard records.
+The app labels synthetic scenarios and trained model estimates, uses actual exported model inference, and includes the investigation reporter and browser-local cases. The portfolio contains five authored comparison scenarios and 107 independently generated customer histories scored by the models; the 2,000 generated customers supply training and evaluation data, not 2,000 extra dashboard records.
 
 ## What was built
 
@@ -11,7 +11,7 @@ V2.1 is implemented locally. Read [MODEL_REVIEW.md](MODEL_REVIEW.md) for the sco
 - Browser inference in all four existing views, historical score charts, transaction evidence and newly generated case reports. No API key or inference server is needed. Old saved reports retain their original captured provenance until explicitly regenerated.
 - Exceptions including adequate cash after a scam, recovery, familiar-device scams, legitimate large payments, ordinary device changes, unrelated prior distress, income gaps, same-sender payments and pooled-payment patterns.
 
-Read **[ML_RESULTS.md](ML_RESULTS.md)** for a plain-language explanation and measured results; **[ml/README.md](ml/README.md)** for exact commands and feature contracts.
+Read **[ml/README.md](ml/README.md)** for exact commands and feature contracts. Measured results are saved in [ml/artifacts/evaluation.json](ml/artifacts/evaluation.json) and [ml/artifacts/independent-audit.json](ml/artifacts/independent-audit.json).
 
 ## Run the app
 
@@ -73,7 +73,7 @@ No messages, holds, account freezes, debt changes or recovery actions are execut
 | `src/investigation.ts`, `src/InvestigationPanel.tsx` | Captured evidence reports, sources and local lookup |
 | `src/persistence.ts` | Existing browser-local case persistence and audit mutations |
 
-`V2_HANDOFF.md` records the completed implementation and remaining production work. `VERIFICATION.md` preserves the historical V1 checks; `ML_VERIFICATION.md` preserves the initial V2 checks; `MODEL_REVIEW.md` records the current V2.1 repair and checks. `THIRD_PARTY_NOTICES.md` records reused frontend library/font licenses. External datasets and pretrained weights were not imported.
+`THIRD_PARTY_NOTICES.md` records reused frontend library/font licenses. External datasets and pretrained weights were not imported.
 
 
 Portfolio expansion: the recording portfolio now contains 112 synthetic customer records. The original 24 IDs and histories are retained; 88 new records come from a separately validated source at `data/presentation-extension/`, seed 20261006, with distinct EXT IDs. New records use the same frozen trained models. Queue pagination displays 20 records per page; search/filtering covers the whole portfolio. No real customer data was imported and no model retraining was needed.
