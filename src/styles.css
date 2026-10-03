@@ -140,11 +140,23 @@ button:hover {
   color: #d0e9b9;
   background: #234c3d;
   border-radius: 9px;
-  font-weight: 600;
-  font-size: 28px;
-  line-height: 1;
-  letter-spacing: -2px;
-  padding-right: 2px;
+  flex-shrink: 0;
+}
+.brand-logo-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 .brand-sub {
   display: block;
@@ -3224,3 +3236,127 @@ button:not(:disabled):active {
     padding-bottom: 10px;
   }
 }
+
+/* ─── Splash Intro Animation ─────────────────────────────────────────── */
+
+.intro-overlay {
+  position: fixed;
+  z-index: 99999;
+  display: grid;
+  place-items: center;
+  background: #234c3d;
+  color: #d0e9b9;
+  overflow: hidden;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+/* STAGE: blank — full green screen, icon hidden */
+.intro-overlay.stage-blank {
+  opacity: 1;
+}
+
+/* STAGE: letter — full screen, icon traces in */
+.intro-overlay.stage-letter {
+  opacity: 1;
+}
+
+/* STAGE: morph — smoothly flies & shrinks to targetRect */
+.intro-overlay.stage-morph {
+  opacity: 1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  transition:
+    top 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    left 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    width 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    height 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 1.0s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* STAGE: done — seamless crossfade */
+.intro-overlay.stage-done {
+  opacity: 0;
+  box-shadow: none;
+  transition:
+    top 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    left 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    width 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    height 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    border-radius 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s ease;
+}
+
+/* SVG icon sizing & transitions inside the overlay */
+.intro-mark-wrapper {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.intro-trace-svg {
+  display: block;
+  transition:
+    width 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    height 1.0s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.35s ease;
+}
+
+/* During blank: hidden */
+.intro-overlay.stage-blank .intro-trace-svg {
+  width: 128px;
+  height: 128px;
+  opacity: 0;
+}
+
+/* During letter tracing: 128px, glowing stroke */
+.intro-overlay.stage-letter .intro-trace-svg {
+  width: 128px;
+  height: 128px;
+  opacity: 1;
+  filter: drop-shadow(0 0 16px rgba(208, 233, 185, 0.45));
+}
+
+/* During morph and done: scales to 22px matching the brand mark */
+.intro-overlay.stage-morph .intro-trace-svg,
+.intro-overlay.stage-done .intro-trace-svg {
+  width: 22px;
+  height: 22px;
+  opacity: 1;
+  filter: none;
+}
+
+/* Tracing path stroke animation */
+.intro-trace-path {
+  stroke-dasharray: 280;
+  stroke-dashoffset: 280;
+}
+
+.intro-overlay.stage-blank .intro-trace-path {
+  stroke-dashoffset: 280;
+}
+
+.intro-overlay.stage-letter .intro-trace-path {
+  animation: traceLetterM 0.88s cubic-bezier(0.35, 0, 0.25, 1) forwards;
+}
+
+.intro-overlay.stage-morph .intro-trace-path,
+.intro-overlay.stage-done .intro-trace-path {
+  stroke-dashoffset: 0;
+}
+
+@keyframes traceLetterM {
+  0% {
+    stroke-dashoffset: 280;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.app-shell.intro-active {
+  opacity: 1;
+}
+
+
