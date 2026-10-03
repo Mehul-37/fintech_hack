@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   UsersRound,
@@ -104,6 +104,69 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [help, setHelp] = useState(false);
   const [resetDialog, setResetDialog] = useState(false);
+  const [introStage, setIntroStage] = useState<'initial' | 'morph' | 'done'>('initial');
+  const [introMounted, setIntroMounted] = useState(true);
+  const [targetRect, setTargetRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const brandMarkRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const updateTarget = () => {
+      if (brandMarkRef.current) {
+        const rect = brandMarkRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setTargetRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+      }
+    };
+
+    updateTarget();
+    const frame = requestAnimationFrame(updateTarget);
+
+    const morphTimer = setTimeout(() => {
+      updateTarget();
+      setIntroStage('morph');
+    }, 700);
+
+    const doneTimer = setTimeout(() => {
+      setIntroStage('done');
+    }, 1900);
+
+    const unmountTimer = setTimeout(() => {
+      setIntroMounted(false);
+    }, 2350);
+
+    window.addEventListener('resize', updateTarget);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(morphTimer);
+      clearTimeout(doneTimer);
+      clearTimeout(unmountTimer);
+      window.removeEventListener('resize', updateTarget);
+    };
+  }, []);
+
+  const replayIntro = () => {
+    if (brandMarkRef.current) {
+      const rect = brandMarkRef.current.getBoundingClientRect();
+      setTargetRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+    setIntroMounted(true);
+    setIntroStage('initial');
+    setTimeout(() => setIntroStage('morph'), 700);
+    setTimeout(() => setIntroStage('done'), 1900);
+    setTimeout(() => setIntroMounted(false), 2350);
+  };
+
   const c = customers.find((c) => c.id === customerId)!;
   const asOf = endOfDay(day);
   const f = financialState(c, asOf);
@@ -180,29 +243,61 @@ export default function App() {
       setToast('Case updated and saved locally.');
   }
   const caseRecord = cases.find((r) => r.id === selectedCase);
+  const morphStyle: React.CSSProperties =
+    introStage === 'initial'
+      ? {
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          borderRadius: '0px',
+        }
+      : {
+          top: targetRect ? targetRect.top : 30,
+          left: targetRect ? targetRect.left : 26,
+          width: targetRect ? targetRect.width : 34,
+          height: targetRect ? targetRect.height : 36,
+          borderRadius: '9px',
+        };
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate('overview');
-          }}
+    <>
+      {introMounted && (
+        <div
+          className={`intro-overlay stage-${introStage}`}
+          style={morphStyle}
+          aria-hidden="true"
         >
-          <span className="brand-mark">m</span>
-          <span>
-            meridian<span className="brand-sub">RISK WORKSPACE</span>
-          </span>
-        </a>
-        <div className="workspace-label">
-          <span className="live-dot" />
-          Demo institution <span className="tiny">V1</span>
+          <div className="intro-glow" />
+          <span className="intro-mark">m</span>
         </div>
-        <div className="nav-label">WORKSPACE</div>
-        <nav aria-label="Main navigation">
-          {nav.map((n) => (
+      )}
+      <div className={`app-shell ${introMounted && introStage === 'initial' ? 'intro-active' : ''}`}>
+        <aside className="sidebar">
+          <a
+            className="brand"
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              replayIntro();
+              navigate('overview');
+            }}
+            title="Click to replay intro animation"
+          >
+            <span ref={brandMarkRef} className="brand-mark">
+              m
+            </span>
+            <span>
+              meridian<span className="brand-sub">RISK WORKSPACE</span>
+            </span>
+          </a>
+          <div className="workspace-label">
+            <span className="live-dot" />
+            Demo institution <span className="tiny">V1</span>
+          </div>
+          <div className="nav-label">WORKSPACE</div>
+          <nav aria-label="Main navigation">
+            {nav.map((n) => (
             <button
               key={n.id}
               onClick={() => navigate(n.id)}
@@ -858,6 +953,7 @@ export default function App() {
         </button>
       </Sheet>
     </div>
+    </>
   );
 }
 
