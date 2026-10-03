@@ -3,7 +3,7 @@
 
 > **Workspace:** Meridian — Connected Risk Workspace  
 > **Target Problem Statement:** Problem Statement 3 — AI-Powered Financial Scam Detection & Loan Risk Management  
-> **Status:** Specification Phase (Awaiting Approval prior to Generator Implementation)  
+> **Status:** Local revised specification, 3 October 2026. User approved target, scale and exception choices; generator/training are not implemented in this step.  
 > **Compliance:** Strict separation of Fraud Risk and Loan Repayment Risk; Full compatibility with V1 contracts.
 
 ---
@@ -70,7 +70,7 @@ The synthetic dataset is architectured across 8 normalized, joinable CSV tables 
 | FK customer_id        |    |
 |    principal          |    |
 |    monthly_emi        |    |
-|    loan_risk_class    |    |
+|    monthly due date  |    |
 +-----------------------+    |
             ^                |
             |                |
@@ -230,7 +230,7 @@ The synthetic dataset is architectured across 8 normalized, joinable CSV tables 
 | `salary_day_of_month`| `INT` | `1 – 28` | Expected monthly salary credit day | `1` |
 | `outstanding_balance`| `NUMERIC(12,2)`| `₹0 – ₹20,00,000` | Remaining principal balance | `312000.00` |
 | `loan_status` | `ENUM` | `Active`, `Closed`, `Defaulted` | Current contract lifecycle state | `Active` |
-| **`loan_risk_class`** *(Target)*| `INT` | `0` (low), `1` (medium), `2` (high) | Ground truth repayment distress class | `2` |
+| `loan_risk_class` *(Legacy, optional)*| `INT` | `0` (low), `1` (medium), `2` (high) | Deprecated compatibility/display field; exclude from model inputs and labels. The training target is snapshot-level `overdue_7d` below. | `2` |
 
 ### 4.7. `repayments.csv`
 | Column Name | Data Type | Range / Format | Description | Example Value |
@@ -261,6 +261,19 @@ The synthetic dataset is architectured across 8 normalized, joinable CSV tables 
 | `transaction_ids` | `VARCHAR(128)` | Delimited list of IDs | Linked transactions | `TX-492019;TX-492020` |
 
 ---
+
+### 4.9. Derived training snapshots (not a ninth source table)
+
+Create `repayment_training_snapshots.csv` by joining the eight source tables. Each row is one customer/loan/as-of assessment, with a stable snapshot ID, `customer_id`, `loan_id`, `as_of`, `next_due_at`, `label_cutoff`, feature columns and `overdue_7d`.
+
+- The qualifying installment is the next contractual EMI with `as_of < next_due_at <= as_of + 30 days`.
+- Set the outcome cutoff to the end of the seventh calendar day after the due date in IST (`23:59:59.999+05:30`).
+- `overdue_7d = 1` if a positive installment balance remains at the cutoff, including partial payment; otherwise `0` if fully settled by the cutoff.
+- Exclude rows without a qualifying EMI or complete follow-up. Never label an immature outcome as paid or missed.
+- Calculate features from observations available at `as_of` only. Future payment records provide labels only, never features.
+- Use integer paise for payment comparisons. Store timestamps with explicit offsets.
+- This target means early delinquency, not permanent loan default. A low/medium/high UI band must be derived separately from validated model outputs; it is not an ordinal training target.
+- The existing `missed_payment` (>30 days) and `loan_risk_class` fields are not the target for this first model.
 
 ## 5. Mapping of Dataset to V1 (Meridian)
 
@@ -307,8 +320,8 @@ The table below describes how the relational synthetic data maps into the runtim
 | `FinancialState.shortfall`| `number` | Computed | `max(0, loan.emi - fundsForEmi)`. Forecasted before salary. |
 | `FinancialState.daysPastDue`| `number`| Computed | `max(0, floor((asOf - loan.dueAt) / 86400000))` if unpaid. |
 | **`RiskSnapshot`** | Score Provider | `src/scoring.ts` & ML Output | Replaces simulated points with dual ML model scores: |
-| `RiskSnapshot.scamScore` | `number (0–100)` | Fraud/Scam ML Model | Calibrated probability normalized to 0–100. |
-| `RiskSnapshot.repaymentScore`| `number (0–100)`| Loan Risk ML Model | Calibrated probability normalized to 0–100. |
+| `RiskSnapshot.scamScore` | `number (0–100)` | Fraud/Scam ML Model | Transaction probability requires validation/calibration. Keep an open-episode peak separately labelled and dated; it is not a fresh account-level probability. |
+| `RiskSnapshot.repaymentScore`| `number (0–100)`| Loan Risk ML Model | Predicted probability of `overdue_7d`, normalized to 0–100 only after calibration checks. V1 authored scores remain simulated indices. |
 | `RiskSnapshot.episode` | `object` | Peak tracking logic | Tracks open scam episode peak (`peak`, `observedAt`, `windowStart`). |
 | **`InferenceInput`** | Feature Pipeline | Documented in `V2_HANDOFF.md` | Strict as-of feature vector: `(customerId, asOf, observedTx, observedEvents, financialState, loanSchedule)`. |
 
@@ -318,12 +331,13 @@ The table below describes how the relational synthetic data maps into the runtim
 
 ### 6.1. Scale & Reproducibility
 - **Development Seed Tier**:
-  - `5,000` Customers
-  - `25,000` Transactions
+  - `2,000` Customers
+  - Approximately `40,000` history transactions over `60` days: average `10` transactions per customer per month, with varied individual activity rather than an identical count for everyone. This is a design budget, not an empirical claim about normal usage.
   - `1,000` Merchants
   - `2,000` Devices
   - `2,000` Loans
-  - `10,000+` Repayment records
+  - Repayment records derived from actual generated loan schedules, not an independent fixed count.
+  - Continue simulation through day `97` for complete repayment outcome follow-up. Supplemental transactions after history day 60 are additional to the approximately 40,000 history rows; keep their features unavailable to earlier assessments.
 - **Production Scalability**:
   Parametric architecture configured via `--scale dev` vs `--scale prod` supporting `50,000` customers and `200,000+` transactions without code modifications.
 - **Reproducibility**:
@@ -349,7 +363,9 @@ The table below describes how the relational synthetic data maps into the runtim
   - Two-wheeler / vehicle loans (24–48 months).
   - Education loans.
 
-### 6.3. Financial Trajectories & Customer Archetypes (180-Day Simulation)
+### 6.3. Financial Trajectories & Customer Archetypes (60 History Days + Outcome Follow-Up)
+
+Use the first 30 days to build observed behavioral baselines and days 31–60 for assessments. Continue outcomes through day 97. The following shares are scenario design choices and the expected score ranges are illustrative hypotheses, not labels, acceptance targets or measured model outputs. Do not force a model to reproduce the V1 scripted score sequence.
 
 | Archetype | Portfolio Share | Behavior Pattern | Expected Model Response |
 | :--- | :--- | :--- | :--- |
@@ -376,17 +392,34 @@ The table below describes how the relational synthetic data maps into the runtim
   - Fraud can occur on familiar devices (social engineering scams).
   - High-risk merchants have legitimate customers.
 - **Zero Target Leakage**:
-  - `loan_risk_class` (0, 1, 2) is derived from true simulated future installment defaults (e.g., unpaid EMI 30 days post-due), never from an arbitrary concurrent score variable.
-  - Features for time $T$ are computed strictly using historical transactions $t \le T$.
+  - Derive snapshot-level `overdue_7d` from actual simulated installment payments through the seven-day cutoff defined in section 4.9, never from a concurrent score or archetype.
+  - Features for time $T$ use observations available by $T$ only. Historical payment outcomes are permitted; the predicted installment's eventual outcome is a label only.
+  - Exclude hidden archetypes, `is_fraud`, `scam_type`, `loan_risk_class`, `overdue_7d`, future outcomes, narrative answer text and `simulated_tx_risk` from feature inputs.
+  - Compute behavioral baselines from preceding observed history, not the full simulation. Device/merchant reputation and sharing counts must reflect knowledge at the assessment time, not future network activity.
 - **Mathematical Ledger Invariant**:
   $$\text{Cash}_t = \text{OpeningCash} + \sum_{i \le t, \text{Completed}} (\text{In}_i - \text{Out}_i) \ge 0$$
   Credit draws increase both cash and liability (`creditUsed`).
 
 ---
 
-## 7. Approval Gate
+### 6.6. Required exception cohorts
 
-Per the project prompt:
-> *"Do not write the generator yet. Do not modify the existing V1. Wait for approval before implementing the dataset generator."*
+Include scams with adequate remaining savings, recovery before EMI, scams on familiar devices, small scam losses, legitimate large payments, ordinary device replacements, pre-existing distress followed by unrelated fraud, income interruption without fraud, missing/conflicting observations, repeated payments from one sender, legitimate pooled payments resembling fan-in, and multiple episodes. Place these cohorts inside the 2,000-customer portfolio. Include customers with and without loans. Record scenario tags for evaluation only, never for model features. Future simulator truth can identify a case's scenario, but inference must still describe an unconfirmed association rather than proven real-world causation.
 
-The complete specification is saved and ready for team sign-off.
+## 7. Local training and evaluation decision
+
+- First implementation: two separate scikit-learn `HistGradientBoostingClassifier` models on CPU, with seed 42, compared against a simple baseline. No pretrained checkpoint or external training service is required by this plan. Install dependencies into an isolated workspace environment when implementation begins.
+- Fraud rows represent transactions; repayment rows represent loan/as-of snapshots. The two datasets have different row counts. Neither model consumes the other model's risk score mechanically.
+- Split customer IDs into approximately 1,400 train / 300 validation / 300 test customers before deriving rows; keep all records for a customer in one group. Keep Arjun outside the generated splits. Disable automatic row-level validation and use the explicit group-disjoint validation set.
+- Fit preprocessing on training only; select settings, thresholds and calibration on validation only. Evaluate the frozen pipeline on test once. A 60-day history is insufficient for a strong three-way chronological evaluation with purged 37-day outcome windows; report the first result as an unseen-customer synthetic holdout and leave temporal generalization unverified.
+- Report fraud precision/recall, PR-AUC and false alerts per 1,000; repayment calibration and warning lead time; and contextual false links in the exception cohorts. Calibration metrics and fit must use the defined binary target, not ordinal display bands.
+- Save both fitted models, preprocessing, feature order, target definition, package versions, seed, split IDs and measured evaluation results. Serve inference separately from one-time training.
+
+## 8. Scope and provenance
+
+This workspace copy incorporates the user's 3 October decisions on target, dataset budget and exceptions. The original document in Downloads is preserved. This step updates the plan and explains training; it does not claim that a generator, trained model or ML-enabled UI exists. The V1 interface and scripted scoring remain unchanged until model implementation and integration.
+
+
+## V2.1 implementation update - 4 October 2026
+
+The seed-42 source now has 43,630 completed history transactions, 26,446 completed follow-up transactions and 1,800 pending instructions (71,876 CSV records). Authorized bursts, legitimate novelty/device changes, variable-size scams and concealed small scams introduce overlap between classes. Labels do not determine visible input flags. Presentation data (seed 20261004) and frozen-model audit data (seed 20261005) are separate sources; they never enter fitting or validation selection. The original downloaded specification is preserved. See `MODEL_REVIEW.md` for measured results and limits.

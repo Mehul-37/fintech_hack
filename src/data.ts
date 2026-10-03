@@ -1,3 +1,4 @@
+import generatedCustomers from './generated-customers.json';
 import type { Customer, CustomerEvent, Transaction, Channel } from './types';
 export const at = (day: number, time = '12:00') =>
   `2026-09-${String(day).padStart(2, '0')}T${time}:00+05:30`;
@@ -385,74 +386,9 @@ const uncertain: Customer = {
     { day: 24, scam: 43, repayment: 18 },
   ],
 };
-const names = [
-  'Aditi Nair',
-  'Kabir Sethi',
-  'Ishita Das',
-  'Vikram Singh',
-  'Ananya Bose',
-  'Rahul Jain',
-  'Meera Iyer',
-  'Kunal Verma',
-  'Sana Ali',
-  'Nikhil Joshi',
-  'Tara Menon',
-  'Aman Gupta',
-  'Riya Malhotra',
-  'Sahil Batra',
-  'Pooja Pillai',
-  'Dhruv Bansal',
-  'Simran Kaur',
-  'Yash Patel',
-  'Sneha Roy',
-];
 export const customers: Customer[] = [
-  arjun,
-  healthy,
-  organic,
-  mule,
-  uncertain,
-  ...names.map((name, i) => {
-    const c = base(`MR-${1006 + i}`, name);
-    const salary = 65000 + i * 2500;
-    return {
-      ...c,
-      salary,
-      openingCash: 45000 + i * 3200,
-      story: undefined,
-      transactions: [
-        tx(`B${i}-SAL`, 1, salary, 'in', 'Monthly payroll', 'salary'),
-        tx(
-          `B${i}-ESS`,
-          15,
-          28000 + i * 500,
-          'out',
-          'Known household merchants',
-          'essential',
-          (['UPI', 'Card', 'Wallet', 'Digital banking'] as Channel[])[i % 4],
-        ),
-      ],
-      events: [
-        event(
-          `B${i}-E1`,
-          1,
-          'Routine salary received',
-          'Deterministic synthetic portfolio record.',
-          'baseline',
-        ),
-        event(
-          `B${i}-E2`,
-          24,
-          'Regular cash flow',
-          'Known merchants; sufficient upcoming EMI coverage.',
-          'liquidity',
-        ),
-      ],
-      scorePoints: [
-        { day: 1, scam: 4 + (i % 12), repayment: 10 + (i % 15) },
-        { day: 24, scam: 5 + (i % 14), repayment: 12 + (i % 17) },
-      ],
-    };
-  }),
+  arjun, healthy, organic, mule, uncertain,
+  ...(generatedCustomers as Customer[]),
 ];
 export const detailedCustomers = customers.slice(0, 5);
+

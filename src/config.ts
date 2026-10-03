@@ -1,7 +1,9 @@
-// Configurable V1 thresholds. These are prototype rules, not banking policy.
+// Model thresholds use synthetic validation; context thresholds are prototype rules.
+import artifacts from './ml-models.json';
 export const thresholds = {
-  scamAlert: 70,
-  repaymentWarning: 60,
+  scamAlert: artifacts.thresholds.fraud,
+  repaymentWarning: artifacts.thresholds.repayment,
+  scamContextConfidence: 75, // Conservative narrative gate; not a fitted alert threshold.
   largeTransferMultiple: 5,
   shockFraction: 0.5,
   repaymentRise: 20,

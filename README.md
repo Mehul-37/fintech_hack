@@ -1,77 +1,79 @@
 # Meridian — connected risk workspace
 
-A complete local V1 prototype for a financial-institution analyst: suspicious event → financial shock → repayment pressure → evidence-led context → persistent review task.
+Meridian combines two separate trained models with an evidence-based context layer. A transaction model estimates simulated fraud involvement. A repayment model estimates whether the next EMI will still have an unpaid balance at the end of its seventh calendar day after due date. Context compares the observed payment sequence, cash shock, income and loan position to suggest a possible connection. It does not prove causation or customer role.
 
-**Synthetic scenario • Simulated risk scores** remains visible throughout. This is an interactive investigation demonstration, not a production lending or fraud decision system.
+V2.1 is implemented locally. Read [MODEL_REVIEW.md](MODEL_REVIEW.md) for the score-distribution repair and independent audit. The app labels synthetic scenarios and trained model estimates, uses actual exported model inference, and preserves the investigation reporter and browser-local cases. The portfolio contains five authored comparison scenarios and 107 independently generated customer histories scored by the models; the 2,000 generated customers supply training and evaluation data, not 2,000 extra dashboard records.
 
-## Run locally
+## What was built
 
-Requires Node.js 20.19+ or 22.12+ and npm. The development build uses React 19, TypeScript, Vite, Recharts, Motion, React Flow, Radix Dialog and locally bundled Inter fonts. No API keys, login, Python service or runtime external data source is needed.
+- A seeded financial simulator: **2,000 customers**, **43,630 completed history transactions** over 60 days, plus **26,446 completed follow-up transactions** and **1,800 pending instructions**. The transaction CSV has 71,876 rows. Eight source tables, integer-paise amounts, manifest hashes and an independent validator are saved in `data/synthetic/`.
+- Two scikit-learn histogram gradient-boosted tree classifiers, simple logistic baselines, customer-disjoint splits, validation tuning/calibration and saved Python/browser artifacts. The fraud target is transaction-level; repayment is loan/snapshot-level. Forty thousand transactions do not mean forty thousand independent customers.
+- Browser inference in all four existing views, historical score charts, transaction evidence and newly generated case reports. No API key or inference server is needed. Old saved reports retain their original captured provenance until explicitly regenerated.
+- Exceptions including adequate cash after a scam, recovery, familiar-device scams, legitimate large payments, ordinary device changes, unrelated prior distress, income gaps, same-sender payments and pooled-payment patterns.
+
+Read **[ML_RESULTS.md](ML_RESULTS.md)** for a plain-language explanation and measured results; **[ml/README.md](ml/README.md)** for exact commands and feature contracts.
+
+## Run the app
 
 ```powershell
 npm ci
 npm run dev -- --port 5173 --strictPort
 ```
 
-Open **http://127.0.0.1:5173/**. The server binds to loopback only. After setup, replay, charts, evidence and cases work without internet access. Keep using the same URL/browser profile for saved cases; `localhost` and `127.0.0.1` have separate browser storage.
+Open http://127.0.0.1:5173/. Use the same origin/browser for saved cases. The app binds to loopback. After setup it works without internet access.
 
 ```powershell
 npm run typecheck
-npm test
-npm run build
+npm test -- --configLoader runner
+npm run build -- --configLoader runner
 ```
 
-The production output is in `dist/`. Nothing has been publicly deployed or submitted. `PROTOTYPE_PLAN.md`, `IMPLEMENTATION_PROMPT.md` and `research/` are preserved.
+The runner config loader avoids a sandbox-specific esbuild config-loader access error. The production output is `dist/`. No deployment was performed.
 
-## The complete experience
+## Reproduce the data and models
 
-- **Overview:** 24 deterministic customers, computed counts, a clickable Scam Risk / Repayment Risk scatterplot, searchable prioritized queue, context/risk/channel/open-review filters and direct story launch. Counts overlap; they do not add up to 24.
-- **Customer 360:** five authored comparison stories plus 19 modest portfolio records. Play/pause, previous/next event, day scrubber and playback reset update both scores, cash, credit, available evidence, context and recommendations together. Future observations and settled transactions remain hidden.
-- **Transactions & Network:** filters across UPI, wallet, card and digital banking; inspectable before/after balances and observed signals; separately selectable parallel transfers; directed fan-in / rapid pass-through comparison, interactive account evidence and graph zoom/fit controls.
-- **Cases & Actions:** create distinct investigation/support/verification/cash-flow/beneficiary/reminder tasks from recommendations. Status, owner, disposition, checklist, contact outcome, follow-up date, notes and timestamped activity persist in local storage. Duplicate customer/action tasks open the existing record. Resolution requires a disposition; notes and follow-up dates are validated.
+Python 3.12 and the local `.venv` were used. No cloud training service is required.
 
-All relevant views share one customer and one as-of day. Opening another section pauses playback. Refresh restores saved cases and returns the view to Overview / 24 September. Case evidence is an explicitly dated snapshot, independent of replay.
+```powershell
+.\.venv\Scripts\python.exe generator/generate.py
+.\.venv\Scripts\python.exe generator/validate.py
+.\.venv\Scripts\python.exe ml/train.py
+.\.venv\Scripts\python.exe ml/export_demo.py
+.\.venv\Scripts\python.exe -m unittest discover -s ml -p test_*.py
+.\.venv\Scripts\python.exe -m unittest discover -s generator -p test_*.py
+```
 
-## Canonical financial story
+Training writes `ml/artifacts/fraud.joblib`, `repayment.joblib`, `models.json`, `evaluation.json`, split IDs, numerical parity probes and feature-row exports. It also refreshes `src/ml-models.json`, which the app loads. Packages are pinned in `ml/requirements-lock.txt`.
 
-Arjun receives salary of ₹85,000. His recurring expense budget is ₹42,000 and EMI is ₹18,000, leaving normal monthly surplus of ₹25,000. Cash immediately before the 13 September transfers is ₹96,000. ₹47,000 at 14:02 and ₹31,000 at 14:08 reduce it to ₹18,000, an 81.25% shock.
+## The demonstration
 
-A ₹6,000 credit draw on 17 September increases cash **and debt**. Subsequent settled essentials total ₹12,000. On 24 September cash is ₹12,000; ₹6,000 of already-known pending essential commitments leave ₹6,000 for the ₹18,000 EMI due 27 September. Forecast shortfall is ₹12,000. Expected next salary is 1 October. The installment is upcoming, **not missed**.
+Overview has a clickable two-risk scatterplot and queue. Customer 360 has replay, available evidence, loan position and recommendations. Transactions & Network has individual transfer inspection and fan-in/pass-through comparison. Cases & Actions retains the local investigation report, evidence sources, local topic lookup, disposition, notes, checklists and export. Replay alone creates no case. Saving a task changes neither score nor loan terms.
 
-Scores follow the approved sequence: `8/17 → 23/17 → 91/22 → 91/31 → 91/46 → 91/68`. Scam Risk 91 after 13 September is the peak of an open episode observed on that date, not a score for each later transaction. Transaction scores are separately labeled in evidence. Neither index is a probability.
+Arjun's ledger is unchanged: two transfers of ₹47,000 and ₹31,000 take ₹96,000 to ₹18,000. On 24 September, cash is ₹12,000, known essentials are ₹6,000, and funds for the ₹18,000 EMI are ₹6,000: a **₹12,000 due-date shortfall**. The due date is 27 September and salary is expected on 1 October. The model gives a scam episode peak of **88.8** and a seven-day repayment estimate of **4.6**. Salary before the 4 October label cutoff can cure the shortfall. The old scripted 91/68 scores are retained only as historical fixtures/reference tests and do not drive the app.
 
-## Boundaries of the simulation
+## Evidence and limits
 
-- Scores and prior repayment records are authored synthetic fixtures. No model training, inference accuracy, calibration, SHAP attribution or claimed real-world effectiveness is present.
-- Ledger balances, credit utilization, upcoming commitment coverage, portfolio counts, context rules, intervention routing and case persistence are functional.
-- Rules use available device/payment evidence, cash shock, event ordering, repayment change, income gaps and pass-through structure. Thresholds in `src/config.ts` are configurable prototype choices, not institutional policy. Conflicting explanations route to manual review.
-- Financial forecasts use pending essentials with `knownAt` timestamps. They never treat future settled consumption as already-observed evidence. Expected salary is a schedule, not a guaranteed future credit.
-- High Scam Risk does not identify a perpetrator. Customer-authorized payments can still involve deception. Network relationships do not prove collusion. Scam subtype remains Unknown.
-- Case actions are local review requests or draft tasks. No message is sent, payment held, debt forgiven, terms changed, recovery achieved or account frozen. Completed transfers cannot be held retroactively. Saving a case never reduces a risk score.
-- Local browser storage is not an institutional database. Clearing site data removes cases; there is no multi-user synchronization, authentication, authorization, real identity verification or production audit security.
+The measured test is an unseen-customer **synthetic** holdout. Real-world accuracy, causal effects, robust time generalization, bank policy and real-population calibration remain unverified. Four repayment snapshots from one customer can concern overlapping outcomes, so split groups are customers, not rows.
 
-## Reset and recording
+The context engine is a transparent rule layer, not a third trained causal model. Model alert thresholds are 27.5/100 for both models; narrative gates and cash/network rules remain prototype choices. Legitimate pooled payments can resemble mule activity, and a model score cannot identify guilt, scam subtype or confirmed victim status.
 
-**Reset replay** sets day 1 and retains cases. **Reset saved cases** opens a confirmation explaining that all local cases, notes and activity will be deleted; playback and histories remain unchanged. Two verification-created synthetic tasks are retained in the review browser so you can inspect their saved trail. A fresh browser profile starts with an empty queue; clear the sample cases explicitly before a clean recording.
+Pending instructions may remain unexecuted; they are known commitments until their scheduled time, not guaranteed future settlement. Generated profile/reputation values are assumptions and excluded from downstream learned features. The UI loan principal/history are supplied fixture values; generated multiple-loan training is not a full multiple-loan UI migration.
 
-Recommended recording view: 1920 × 1080, browser zoom 100%; 1440 × 900 is also checked. The main story's timeline, primary interventions and EMI state are visible together. Full case activity intentionally scrolls. Smaller windows reflow panels and preserve horizontally scrollable data tables.
-
-See `DEMO_SCRIPT.md` for the roughly 2:20 click-by-click narration, `V2_HANDOFF.md` for model integration and migration points, and `VERIFICATION.md` for the actual checks and screenshot inventory.
+No messages, holds, account freezes, debt changes or recovery actions are executed. Cases use `meridian.cases.v1` browser storage, without authentication, server audit guarantees or synchronization. FastAPI, SQLite, SHAP and production deployment are deferred; direct local inference already serves the demo.
 
 ## Source map
 
 | File | Responsibility |
 |---|---|
-| `src/types.ts` | Customer, event, transaction, loan, financial, risk, context and case contracts |
-| `src/data.ts` | Deterministic synthetic ledger / scenario fixtures |
-| `src/selectors.ts` | Strict as-of selection and ledger-derived financial state |
-| `src/scoring.ts` | Typed authored score provider and replaceable `scoreProvider` binding |
-| `src/config.ts` | Prototype thresholds |
-| `src/context.ts` | Observable evidence and temporal association rules |
-| `src/interventions.ts` | Human review recommendations by context |
-| `src/persistence.ts` | Versioned storage key, duplicate prevention and audit mutations |
-| `src/App.tsx` | Four section views and shared customer/playback state |
-| `src/components.tsx`, `src/MoneyEdge.tsx` | Charts, evidence sheets and inspectable money-flow edges |
-| `src/engine.test.ts` | Financial, as-of, routing, replay and persistence invariants |
+| `generator/generate.py`, `generator/validate.py` | Source simulation, hashes, independent ledger/relationship checks |
+| `ml/features.py`, `ml/train.py` | As-of features, target maturity, grouped splits, training/evaluation/export |
+| `src/ml-inference.ts`, `src/ml-models.json` | Numeric feature extraction and actual browser forest inference |
+| `src/scoring.ts`, `src/components.tsx` | Shared trained provider and model-driven historical chart |
+| `src/selectors.ts`, `src/context.ts` | Observed ledger, known commitments and cautious contextual routing |
+| `src/investigation.ts`, `src/InvestigationPanel.tsx` | Captured evidence reports, sources and local lookup |
+| `src/persistence.ts` | Existing browser-local case persistence and audit mutations |
 
-Design references informed the investigation workflow; vendor screenshots are not embedded in the app. `THIRD_PARTY_NOTICES.md` records the licenses of reused open-source libraries and bundled font assets.
+`V2_HANDOFF.md` records the completed implementation and remaining production work. `VERIFICATION.md` preserves the historical V1 checks; `ML_VERIFICATION.md` preserves the initial V2 checks; `MODEL_REVIEW.md` records the current V2.1 repair and checks. `THIRD_PARTY_NOTICES.md` records reused frontend library/font licenses. External datasets and pretrained weights were not imported.
+
+
+Portfolio expansion: the recording portfolio now contains 112 synthetic customer records. The original 24 IDs and histories are retained; 88 new records come from a separately validated source at `data/presentation-extension/`, seed 20261006, with distinct EXT IDs. New records use the same frozen trained models. Queue pagination displays 20 records per page; search/filtering covers the whole portfolio. No real customer data was imported and no model retraining was needed.

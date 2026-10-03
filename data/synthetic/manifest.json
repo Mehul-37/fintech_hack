@@ -1,0 +1,57 @@
+{
+  "schema_version": "meridian-synthetic-2.1",
+  "seed": 42,
+  "start": "2026-08-01T00:00:00+05:30",
+  "history_cutoff": "2026-09-29T23:59:59.999000+05:30",
+  "followup_cutoff": "2026-11-05T23:59:59.999000+05:30",
+  "currency": "INR",
+  "authoritative_money": "integer paise",
+  "counts": {
+    "customers": 2000,
+    "behavioral_profiles": 2000,
+    "devices": 2400,
+    "merchants": 400,
+    "transactions": 71876,
+    "customer_events": 20591,
+    "loans": 2000,
+    "repayments": 6000
+  },
+  "history_transactions": 43630,
+  "followup_transactions": 26446,
+  "pending_transactions": 1800,
+  "cohort_counts": {
+    "buffered_scam": 30,
+    "recovered_scam": 30,
+    "familiar_device_scam": 30,
+    "small_scam": 30,
+    "legitimate_large": 30,
+    "new_device_legitimate": 30,
+    "prior_distress_unrelated_scam": 30,
+    "income_gap": 30,
+    "conflicting": 30,
+    "same_sender": 30,
+    "pooled_payments": 30,
+    "multiple_episodes": 30,
+    "healthy": 1056,
+    "organic_distress": 166,
+    "scam_shock": 158,
+    "mule": 58,
+    "mild_distress": 132,
+    "ambiguous": 70
+  },
+  "hashes": {
+    "behavioral_profiles.csv": "7dc193fb9f681f4dc7f9306b65f43d6574c9bf9ea310e15f402e3f6ccd3af893",
+    "customer_events.csv": "6ce55cfd74c2f4e04e5111a5717a3a990e6b53f69d68ac1e9917a3f347ec521e",
+    "customers.csv": "781f2632189c77e0947cf880373a1196630f89d7a467faafd1a684c07b1240af",
+    "devices.csv": "954129b6f4cf2f46cac277db097f6080933a3a0cbd43b63316bc2460095ddb57",
+    "loans.csv": "7abce6ab98b94b81c007e6bf13047aea51e12455cff2d80eb49621a4a2917951",
+    "merchants.csv": "fe22570f5b1ff85b24bf662ee9a8a4cb2467cc2bc5f6ad96d877f968979cdfc2",
+    "repayments.csv": "c1f212adbb9de438e772333b026c4e2ddcc2dd792d2f988e832dfc5d02a1fcd5",
+    "transactions.csv": "d88a7b29a77c32579e6ad14f95d7b628202b5ad21930fae3f4af3a5bf1378b17"
+  },
+  "limitations": [
+    "All synthetic; no real population calibration",
+    "60 history days; temporal generalization unverified",
+    "Reputation fields are opening assumptions; no downstream feature uses full-run summary"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": "meridian-synthetic-2.1",
+  "seed": 20261004,
+  "start": "2026-08-01T00:00:00+05:30",
+  "history_cutoff": "2026-09-29T23:59:59.999000+05:30",
+  "followup_cutoff": "2026-11-05T23:59:59.999000+05:30",
+  "currency": "INR",
+  "authoritative_money": "integer paise",
+  "counts": {
+    "customers": 128,
+    "behavioral_profiles": 128,
+    "devices": 154,
+    "merchants": 400,
+    "transactions": 4797,
+    "customer_events": 1464,
+    "loans": 128,
+    "repayments": 384
+  },
+  "history_transactions": 2964,
+  "followup_transactions": 1718,
+  "pending_transactions": 115,
+  "cohort_counts": {
+    "buffered_scam": 11,
+    "recovered_scam": 11,
+    "familiar_device_scam": 11,
+    "small_scam": 11,
+    "legitimate_large": 11,
+    "new_device_legitimate": 11,
+    "prior_distress_unrelated_scam": 11,
+    "income_gap": 11,
+    "conflicting": 10,
+    "same_sender": 10,
+    "pooled_payments": 10,
+    "multiple_episodes": 10
+  },
+  "hashes": {
+    "behavioral_profiles.csv": "498d53ac377991c6a97b40ad54d337f02f820f8006d13e545bdbd9c69e936583",
+    "customer_events.csv": "ea7f634146815e4aa0768222dec1e821540ab5f559c380b74d870350674ac0d9",
+    "customers.csv": "21b81f6bcf36a202bad010c379cc69a33f3e00f1cca57cfeffe351a082640c7b",
+    "devices.csv": "46ee097e0de404c9a666575215c69923989081e2b3b3fcd3245b5b8bfc37f839",
+    "loans.csv": "de1d0f5c7bb60b49ea97bdf446f472847bbd8352daf0a5846a09f6187e4d9d2e",
+    "merchants.csv": "cb254bdc47c28e9dba7efe46e204408f5fb290ba106d199e887d88324583fcc5",
+    "repayments.csv": "ea928b3226867c887478c77f7806b6ae3f15f5a09cb49d5a1bf1453ff2012dec",
+    "transactions.csv": "5a51052c32bc88893cef8527b6721bd089b47487b6e6632144903f36fa8c59c3"
+  },
+  "limitations": [
+    "All synthetic; no real population calibration",
+    "60 history days; temporal generalization unverified",
+    "Reputation fields are opening assumptions; no downstream feature uses full-run summary"
+  ]
+}

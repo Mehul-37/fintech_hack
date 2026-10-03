@@ -1,0 +1,57 @@
+{
+  "schema_version": "meridian-synthetic-2.1",
+  "seed": 20261005,
+  "start": "2026-08-01T00:00:00+05:30",
+  "history_cutoff": "2026-09-29T23:59:59.999000+05:30",
+  "followup_cutoff": "2026-11-05T23:59:59.999000+05:30",
+  "currency": "INR",
+  "authoritative_money": "integer paise",
+  "counts": {
+    "customers": 2000,
+    "behavioral_profiles": 2000,
+    "devices": 2400,
+    "merchants": 400,
+    "transactions": 71730,
+    "customer_events": 20456,
+    "loans": 2000,
+    "repayments": 6000
+  },
+  "history_transactions": 43570,
+  "followup_transactions": 26360,
+  "pending_transactions": 1800,
+  "cohort_counts": {
+    "buffered_scam": 30,
+    "recovered_scam": 30,
+    "familiar_device_scam": 30,
+    "small_scam": 30,
+    "legitimate_large": 30,
+    "new_device_legitimate": 30,
+    "prior_distress_unrelated_scam": 30,
+    "income_gap": 30,
+    "conflicting": 30,
+    "same_sender": 30,
+    "pooled_payments": 30,
+    "multiple_episodes": 30,
+    "healthy": 1037,
+    "mild_distress": 136,
+    "organic_distress": 175,
+    "scam_shock": 155,
+    "mule": 49,
+    "ambiguous": 88
+  },
+  "hashes": {
+    "behavioral_profiles.csv": "787eb78073116b2aef5142978149a8a7e9d810fd25c29c4bfdd84d66c0dc9cdc",
+    "customer_events.csv": "bfcdff53c7cd5a85d53766ab0c4f6d0a691c193bf0ed143cee1f929f6384f3ce",
+    "customers.csv": "a571120ebd293264fd5ec7e51f8b85cc423abb8bf2a5c4b0b5223cc52f406bef",
+    "devices.csv": "2b7cf2354aeca6ed9ddad087f6d13fb40999f5027040923b77520b075156ec14",
+    "loans.csv": "b06a3bab1faa9c74c49421df24a990c91e7494d448a95aa8afb9c0c499ee7659",
+    "merchants.csv": "d579f2877020a5200607bf542175a32b893760bbc0c40c5a4ed2b96b01b59584",
+    "repayments.csv": "5aece1b61113048d3cedf2cdd3fa2d16b185cc945df42d724b3a8de8e4bfd6ac",
+    "transactions.csv": "9e82ff4810682021d099b08b298ed2da85e71b83d6606cd7e3c60d9592ee1288"
+  },
+  "limitations": [
+    "All synthetic; no real population calibration",
+    "60 history days; temporal generalization unverified",
+    "Reputation fields are opening assumptions; no downstream feature uses full-run summary"
+  ]
+}

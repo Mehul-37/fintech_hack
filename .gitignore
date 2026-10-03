@@ -10,3 +10,5 @@ tmp/
 .env.*
 
 .vercel
+.venv/
+__pycache__/
