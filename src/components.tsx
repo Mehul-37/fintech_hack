@@ -37,8 +37,19 @@ export function Badge({ context }: { context: Context }) {
     </span>
   );
 }
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`card ${className}`}>{children}</section>;
+export function Card({
+  children,
+  className = '',
+  ...props
+}: {
+  children: ReactNode;
+  className?: string;
+} & React.HTMLAttributes<HTMLElement>) {
+  return (
+    <section className={`card ${className}`} {...props}>
+      {children}
+    </section>
+  );
 }
 export function Score({
   value,

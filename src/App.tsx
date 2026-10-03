@@ -70,6 +70,7 @@ import {
   Sheet,
   contextClass,
 } from './components';
+import { PrototypeGuide } from './PrototypeGuide';
 type Section = 'overview' | 'customer' | 'transactions' | 'cases';
 const nav = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -125,6 +126,35 @@ export default function App() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [toast, setToast] = useState('');
   const [help, setHelp] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const prevSectionRef = useRef<Section>('overview');
+  const [transactionsTab, setTransactionsTab] = useState<'ledger' | 'network'>('ledger');
+
+  const openGuide = () => {
+    prevSectionRef.current = section;
+    setPlaying(false);
+    setGuideOpen(true);
+  };
+
+  const closeGuide = () => {
+    setGuideOpen(false);
+    setSection(prevSectionRef.current);
+  };
+
+  const handlePrepareStep = (stepIndex: number) => {
+    if (stepIndex >= 2 && stepIndex <= 6) {
+      setCustomerId(customers[0].id);
+      setDay(16);
+      if (stepIndex === 6) {
+        setTransactionsTab('network');
+      }
+    }
+    if (stepIndex === 7) {
+      if (cases.length > 0 && !selectedCase) {
+        setSelectedCase(cases[0].id);
+      }
+    }
+  };
   const [resetDialog, setResetDialog] = useState(false);
   const [introStage, setIntroStage] = useState<'blank' | 'letter' | 'morph' | 'done'>('blank');
   const [introMounted, setIntroMounted] = useState(true);
@@ -195,7 +225,7 @@ export default function App() {
     runIntroSequence();
   };
 
-  const c = customers.find((c) => c.id === customerId)!;
+  const c = customers.find((c) => c.id === customerId) ?? customers[0];
   const asOf = endOfDay(day);
   const f = financialState(c, asOf);
   const risk = scoreProvider.score(c, asOf);
@@ -364,7 +394,27 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-story">
+        <div
+          className="sidebar-story"
+          onMouseMove={(e) => {
+            const el = e.currentTarget;
+            const rect = el.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            const normX = (x - 0.5) * 2;
+            const normY = (y - 0.5) * 2;
+            const maxDeg = 4.5;
+            const rotX = -normY * maxDeg;
+            const rotY = normX * maxDeg;
+            el.style.transform = `perspective(600px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg)`;
+            el.style.boxShadow = `${-normX * 5}px ${-normY * 5 + 6}px 18px rgba(0, 0, 0, 0.07)`;
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget;
+            el.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
+            el.style.boxShadow = '';
+          }}
+        >
           <div className="eyebrow">THE CONNECTED VIEW</div>
           <h3>
             One customer.
@@ -377,7 +427,7 @@ export default function App() {
           </button>
         </div>
         <div className="sidebar-bottom">
-          <button className="nav-item" onClick={() => setHelp(true)}>
+          <button className="nav-item prototype-guide-btn" onClick={() => openGuide()}>
             <CircleHelp size={18} />
             Prototype guide
           </button>
@@ -401,12 +451,13 @@ export default function App() {
             Synthetic scenario • Simulated risk scores
           </span>
           <button
-            className="icon-button"
+            className="topbar-guide-btn prototype-guide-btn"
             aria-label="Open prototype guide"
             title="Prototype guide"
-            onClick={() => setHelp(true)}
+            onClick={() => openGuide()}
           >
-            <Info size={18} />
+            <CircleHelp size={16} />
+            <span>Prototype guide</span>
           </button>
         </header>
         <main>
@@ -474,7 +525,7 @@ export default function App() {
                       <small>End of day · IST</small>
                     </div>
                   </Card>
-                  <div className="score-grid">
+                  <div className="score-grid" data-guide="score-grid">
                     <Score
                       label="Scam Risk"
                       value={risk.scamScore}
@@ -513,7 +564,7 @@ export default function App() {
                       <small>After observed settled ledger entries</small>
                     </Card>
                   </div>
-                  <Card className="timeline-card">
+                  <Card className="timeline-card" data-guide="timeline-playback">
                     <div className="card-heading">
                       <div>
                         <span className="eyebrow">SHARED CUSTOMER TIMELINE</span>
@@ -724,7 +775,7 @@ export default function App() {
                   </div>
                 </div>
                 <aside className="customer-context">
-                  <Card className={`context-card context-${contextClass(assessment.context)}`}>
+                  <Card className={`context-card context-${contextClass(assessment.context)}`} data-guide="context-card">
                     <div className="eyebrow">
                       <GitBranch size={14} /> CONTEXT ASSESSMENT
                     </div>
@@ -776,7 +827,7 @@ export default function App() {
                       Only observations available by {dateLabel(asOf)}.
                     </div>
                   </Card>
-                  <Card className="actions-card">
+                  <Card className="actions-card" data-guide="actions-card">
                     <div className="card-heading">
                       <h3>Recommended response</h3>
                       <ArrowUpRight size={16} />
@@ -837,6 +888,8 @@ export default function App() {
                 setSelectedTx(null);
               }}
               onTx={setSelectedTx}
+              activeTab={transactionsTab}
+              onTabChange={setTransactionsTab}
             />
           )}
           {section === 'cases' && (
@@ -934,6 +987,12 @@ export default function App() {
       >
         {selectedTx && <TransactionDetail customer={c} transaction={selectedTx} />}
       </Sheet>
+      <PrototypeGuide
+        open={guideOpen}
+        onClose={closeGuide}
+        onNavigateSection={(s) => setSection(s)}
+        onPrepareStep={handlePrepareStep}
+      />
       <Sheet
         open={help}
         onClose={() => setHelp(false)}
@@ -1109,7 +1168,7 @@ function Overview({
         ))}
       </div>
       <div className="overview-grid">
-        <Card className="portfolio-card">
+        <Card className="portfolio-card" data-guide="portfolio-map">
           <div className="card-heading">
             <div>
               <span className="eyebrow">DUAL-RISK MAP</span>
@@ -1177,7 +1236,7 @@ function Overview({
           </div>
         </Card>
       </div>
-      <Card className="queue-card">
+      <Card className="queue-card" data-guide="attention-queue">
         <div className="card-heading">
           <div>
             <span className="eyebrow">PRIORITIZED REVIEW</span>
@@ -1415,13 +1474,22 @@ function Transactions({
   day,
   onCustomer,
   onTx,
+  activeTab = 'ledger',
+  onTabChange,
 }: {
   customer: Customer;
   day: number;
   onCustomer: (id: string) => void;
   onTx: (t: Transaction) => void;
+  activeTab?: 'ledger' | 'network';
+  onTabChange?: (tab: 'ledger' | 'network') => void;
 }) {
-  const [tab, setTab] = useState('ledger');
+  const [internalTab, setInternalTab] = useState<'ledger' | 'network'>(activeTab);
+  const tab = onTabChange ? activeTab : internalTab;
+  const setTab = (t: 'ledger' | 'network') => {
+    setInternalTab(t);
+    onTabChange?.(t);
+  };
   const [channel, setChannel] = useState('all');
   const [direction, setDirection] = useState('all');
   const [search, setSearch] = useState('');
@@ -1648,7 +1716,7 @@ function Transactions({
         </Card>
       ) : (
         <>
-          <Card className="network-card">
+          <Card className="network-card" data-guide="network-panel">
             <div className="card-heading">
               <div>
                 <span className="eyebrow">OBSERVED TRANSACTION RELATIONSHIPS</span>
@@ -1821,7 +1889,7 @@ function Cases({
           Saved in this browser
         </span>
       </div>
-      <div className="cases-layout">
+      <div className="cases-layout" data-guide="case-workspace">
         <Card className="case-queue">
           <div className="card-heading">
             <h3>Case queue</h3>
