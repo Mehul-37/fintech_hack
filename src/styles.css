@@ -246,16 +246,6 @@ button:hover {
   box-shadow: 0 4px 16px rgba(36, 93, 77, 0.55), 0 0 0 3px rgba(36, 93, 77, 0.35);
   transform: translateY(-1px);
 }
-.topbar-guide-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 11px;
-  line-height: 1;
-  white-space: nowrap;
-}
 .sidebar-bottom .prototype-guide-btn {
   margin-bottom: 8px;
 }
@@ -374,16 +364,12 @@ button:hover {
   gap: 18px;
   background: #fdfefb;
 }
-.topbar > .sidebar-toggle,
-.topbar > .guide-toggle {
+.topbar > .sidebar-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-}
-.guide-toggle {
-  margin-left: auto;
 }
 @media (min-width: 761px) {
   .topbar > .sidebar-toggle {

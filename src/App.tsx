@@ -451,15 +451,6 @@ export default function App() {
             Workspace <ChevronRight size={14} />
             <b>{nav.find((n) => n.id === section)?.label}</b>
           </div>
-          <button
-            className="topbar-guide-btn prototype-guide-btn guide-toggle"
-            aria-label="Open prototype guide"
-            title="Prototype guide"
-            onClick={() => openGuide()}
-          >
-            <CircleHelp size={16} />
-            <span>Prototype guide</span>
-          </button>
         </header>
         <main>
           {storageError && (
