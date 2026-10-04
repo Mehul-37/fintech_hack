@@ -80,7 +80,7 @@ import { PrototypeGuide } from './PrototypeGuide';
 type Section = 'overview' | 'customer' | 'transactions' | 'cases';
 const nav = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'customer', label: 'Customer 360', icon: UsersRound },
+  { id: 'customer', label: 'Customer Risk Profile', icon: UsersRound },
   { id: 'transactions', label: 'Transactions & Network', icon: GitBranch },
   { id: 'cases', label: 'Cases & Actions', icon: FolderCheck },
 ] as const;
@@ -476,7 +476,7 @@ export default function App() {
                 <div>
                   <div className="eyebrow">CUSTOMER INTELLIGENCE / {c.id}</div>
                   <h1>
-                    Customer 360<span className="heading-dot">.</span>
+                    Customer Risk Profile<span className="heading-dot">.</span>
                   </h1>
                   <p>{c.dataSource === 'generated-holdout'
                     ? 'Synthetic August–September history · trained model estimates.'
@@ -1991,7 +1991,7 @@ function Cases({
               detail={
                 cases.length
                   ? 'Choose another status filter.'
-                  : 'Open Customer 360 and create a task from a recommended response.'
+                  : 'Open Customer Risk Profile and create a task from a recommended response.'
               }
             />
           )}
@@ -2011,7 +2011,7 @@ function Cases({
                 title={selectedCustomer ? 'Open current customer history' : 'Original customer history is outside the current demo portfolio'}
                 onClick={() => selectedCustomer && onCustomer(selectedCustomer)}
               >
-                Customer 360 <ArrowUpRight size={14} />
+                Customer Risk Profile <ArrowUpRight size={14} />
               </button>
             </div>
             {!selectedCustomer && (

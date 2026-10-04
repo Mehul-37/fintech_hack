@@ -47,7 +47,7 @@ Training writes `ml/artifacts/fraud.joblib`, `repayment.joblib`, `models.json`, 
 
 ## The demonstration
 
-Overview has a clickable two-risk scatterplot and queue. Customer 360 has replay, available evidence, loan position and recommendations. Transactions & Network has individual transfer inspection and fan-in/pass-through comparison. Cases & Actions retains the local investigation report, evidence sources, local topic lookup, disposition, notes, checklists and export. Replay alone creates no case. Saving a task changes neither score nor loan terms.
+Overview has a clickable two-risk scatterplot and queue. Customer Risk Profile has replay, available evidence, loan position and recommendations. Transactions & Network has individual transfer inspection and fan-in/pass-through comparison. Cases & Actions retains the local investigation report, evidence sources, local topic lookup, disposition, notes, checklists and export. Replay alone creates no case. Saving a task changes neither score nor loan terms.
 
 Arjun's ledger is unchanged: two transfers of ₹47,000 and ₹31,000 take ₹96,000 to ₹18,000. On 24 September, cash is ₹12,000, known essentials are ₹6,000, and funds for the ₹18,000 EMI are ₹6,000: a **₹12,000 due-date shortfall**. The due date is 27 September and salary is expected on 1 October. The model gives a scam episode peak of **88.8** and a seven-day repayment estimate of **4.6**. Salary before the 4 October label cutoff can cure the shortfall. The old scripted 91/68 scores are retained only as historical fixtures/reference tests and do not drive the app.
 

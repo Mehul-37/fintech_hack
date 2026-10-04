@@ -124,7 +124,7 @@ export function InvestigationPanel({
           {snapshot.evidence.risk.providerVersion !== modelVersion && (
             <p className="report-notice">
               This saved report uses an earlier score provider ({snapshot.evidence.risk.providerVersion}).
-              Current Customer 360 uses {modelVersion}. Use “Regenerate from captured date” to update
+              Current Customer Risk Profile uses {modelVersion}. Use “Regenerate from captured date” to update
               this report while keeping its original evidence date.
             </p>
           )}
